@@ -1,0 +1,18 @@
+# 의존성 / 빌드
+node_modules/
+dist/
+.vercel/
+
+# ★ API 키 절대 유출 금지 ★
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# 예시 파일은 커밋 허용
+!.env.example
+
+# 기타
+.DS_Store
+*.log
