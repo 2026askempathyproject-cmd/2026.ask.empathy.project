@@ -1,5 +1,13 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
+import { firebaseReady, db, storage, auth } from "./firebase.js";
+import {
+  collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc,
+} from "firebase/firestore";
+import {
+  ref as sRef, uploadBytes, getDownloadURL, deleteObject,
+} from "firebase/storage";
+import { onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
 import {
   Heart, Ear, PenLine, Link2, Sparkles, Bot, Cpu, Globe2, BookOpen,
   Share2, Lightbulb, Plus, Pencil, Trash2, X, Upload, FileText,
@@ -154,6 +162,14 @@ const SectionTitle = ({ badge, title, sub, color = C.blue }) => (
   </div>
 );
 
+/** "example.com" 처럼 입력해도 정상 이동하도록 URL 보정 */
+const normalizeUrl = (raw) => {
+  const v = String(raw ?? "").trim();
+  if (!v || v === "#") return null;
+  if (/^(https?:)?\/\//i.test(v) || /^mailto:|^tel:/i.test(v)) return v;
+  return `https://${v}`;
+};
+
 const IconBtn = ({ onClick, children, color, title }) => (
   <button
     onClick={onClick}
@@ -172,47 +188,155 @@ export default function App() {
   const [editMode, setEditMode] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
+  /* ---------- 관리자 인증 (Firebase Auth) ---------- */
+  const [user, setUser] = useState(null);
+  const [loginForm, setLoginForm] = useState(null); // null | {email, pw, error, busy}
+
+  useEffect(() => {
+    if (!firebaseReady || !auth) return;
+    return onAuthStateChanged(auth, (u) => setUser(u));
+  }, []);
+
+  const toggleEdit = () => {
+    if (editMode) return setEditMode(false);
+    // Firebase 모드에서는 로그인해야 관리자 모드 진입 가능
+    if (firebaseReady && !user)
+      return setLoginForm({ email: "", pw: "", error: null, busy: false });
+    setEditMode(true);
+  };
+
+  const doLogin = async () => {
+    setLoginForm((f) => ({ ...f, error: null, busy: true }));
+    try {
+      await signInWithEmailAndPassword(auth, loginForm.email.trim(), loginForm.pw);
+      setLoginForm(null);
+      setEditMode(true);
+    } catch {
+      setLoginForm((f) => ({
+        ...f,
+        busy: false,
+        error: "로그인에 실패했습니다. 이메일과 비밀번호를 확인해 주세요.",
+      }));
+    }
+  };
+
   /* ---------- My Web Apps CRUD ---------- */
   const [apps, setApps] = useState(INITIAL_APPS);
   const [appForm, setAppForm] = useState(null);
-
-  const saveApp = () => {
-    if (!appForm.title.trim()) return;
-    setApps((prev) =>
-      appForm.id
-        ? dataService.handleUpdate(prev, appForm.id, appForm)
-        : dataService.handleAdd(prev, appForm)
-    );
-    setAppForm(null);
-  };
 
   /* ---------- Materials CRUD ---------- */
   const [materials, setMaterials] = useState(INITIAL_MATERIALS);
   const [activeTab, setActiveTab] = useState("jagi");
   const [matForm, setMatForm] = useState(null);
+  const [matSaving, setMatSaving] = useState(false);
   const fileInputRef = useRef(null);
+
+  /* Firebase 모드: Firestore 실시간 구독 */
+  useEffect(() => {
+    if (!firebaseReady || !db) return;
+    const unsubApps = onSnapshot(collection(db, "webapps"), (snap) =>
+      setApps(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    );
+    const unsubMats = onSnapshot(collection(db, "materials"), (snap) => {
+      const grouped = { jagi: [], gisul: [], jubyeon: [], mirae: [] };
+      snap.docs.forEach((d) => {
+        const m = { id: d.id, ...d.data() };
+        if (grouped[m.tab]) grouped[m.tab].push(m);
+      });
+      setMaterials(grouped);
+    });
+    return () => {
+      unsubApps();
+      unsubMats();
+    };
+  }, []);
+
+  const saveApp = async () => {
+    if (!appForm.title.trim()) return;
+    if (firebaseReady) {
+      const { id, ...data } = appForm;
+      if (id) await updateDoc(doc(db, "webapps", String(id)), data);
+      else await addDoc(collection(db, "webapps"), data);
+    } else {
+      setApps((prev) =>
+        appForm.id
+          ? dataService.handleUpdate(prev, appForm.id, appForm)
+          : dataService.handleAdd(prev, appForm)
+      );
+    }
+    setAppForm(null);
+  };
+
+  const deleteApp = async (id) => {
+    if (firebaseReady) await deleteDoc(doc(db, "webapps", String(id)));
+    else setApps((p) => dataService.handleDelete(p, id));
+  };
 
   const onFilePick = (e) => {
     const f = e.target.files && e.target.files[0];
-    if (f) setMatForm((prev) => ({ ...prev, ...dataService.handleUpload(f) }));
+    if (f)
+      setMatForm((prev) => ({
+        ...prev,
+        _file: f,
+        ...dataService.handleUpload(f),
+      }));
   };
 
-  const saveMaterial = () => {
-    if (!matForm.name.trim()) return;
-    setMaterials((prev) => ({
-      ...prev,
-      [activeTab]: matForm.id
-        ? dataService.handleUpdate(prev[activeTab], matForm.id, matForm)
-        : dataService.handleAdd(prev[activeTab], matForm),
-    }));
-    setMatForm(null);
+  const saveMaterial = async () => {
+    if (!matForm.name.trim() || matSaving) return;
+    if (firebaseReady) {
+      setMatSaving(true);
+      try {
+        let fileFields = {};
+        if (matForm._file) {
+          // Storage 업로드 → 다운로드 URL 저장
+          const path = `materials/${activeTab}/${Date.now()}_${matForm._file.name}`;
+          const fileRef = sRef(storage, path);
+          await uploadBytes(fileRef, matForm._file);
+          fileFields = { fileUrl: await getDownloadURL(fileRef), filePath: path };
+        }
+        const { id, _file, ...data } = matForm;
+        const payload = { ...data, ...fileFields, tab: activeTab };
+        if (id) await updateDoc(doc(db, "materials", String(id)), payload);
+        else await addDoc(collection(db, "materials"), payload);
+        setMatForm(null);
+      } catch (err) {
+        alert("저장에 실패했습니다: " + (err?.message || err));
+      } finally {
+        setMatSaving(false);
+      }
+    } else {
+      setMaterials((prev) => ({
+        ...prev,
+        [activeTab]: matForm.id
+          ? dataService.handleUpdate(prev[activeTab], matForm.id, matForm)
+          : dataService.handleAdd(prev[activeTab], matForm),
+      }));
+      setMatForm(null);
+    }
   };
 
-  const deleteMaterial = (id) =>
-    setMaterials((prev) => ({
-      ...prev,
-      [activeTab]: dataService.handleDelete(prev[activeTab], id),
-    }));
+  const deleteMaterial = async (item) => {
+    if (firebaseReady) {
+      await deleteDoc(doc(db, "materials", String(item.id)));
+      if (item.filePath) {
+        try {
+          await deleteObject(sRef(storage, item.filePath));
+        } catch {
+          /* 파일이 이미 없어도 무시 */
+        }
+      }
+    } else {
+      setMaterials((prev) => ({
+        ...prev,
+        [activeTab]: dataService.handleDelete(prev[activeTab], item.id),
+      }));
+    }
+  };
+
+  const downloadMaterial = (m) => {
+    if (m.fileUrl) window.open(m.fileUrl, "_blank", "noopener");
+  };
 
   /* ---------- AI 기획자 ---------- */
   const [genGrade, setGenGrade] = useState("5");
@@ -291,7 +415,7 @@ export default function App() {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setEditMode((v) => !v)}
+              onClick={toggleEdit}
               className="flex items-center gap-2 px-3 py-2 rounded-full text-xs md:text-sm font-bold transition-all"
               style={{
                 background: editMode ? C.coral : "rgba(255,255,255,0.9)",
@@ -572,7 +696,7 @@ export default function App() {
                 <input
                   className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
                   style={{ border: "1.5px solid #E2E8F0", background: "#fff" }}
-                  placeholder="링크 URL (예: https://...)"
+                  placeholder="링크 주소 (예: entry.org 또는 https://entry.org)"
                   value={appForm.link}
                   onChange={(e) => setAppForm({ ...appForm, link: e.target.value })}
                 />
@@ -584,39 +708,67 @@ export default function App() {
           )}
 
           <div className="grid md:grid-cols-2 gap-6">
-            {apps.map((app, i) => (
-              <FadeIn key={app.id} delay={i * 0.1}>
-                <div className="rounded-3xl p-7 h-full transition-transform hover:-translate-y-1.5" style={glass}>
-                  <div className="flex items-start justify-between mb-4">
-                    <span className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: `linear-gradient(135deg,${C.blue}18,${C.coral}18)` }}>
-                      <Cpu size={23} style={{ color: C.blue }} />
-                    </span>
-                    {editMode && (
-                      <div className="flex gap-1.5">
-                        <IconBtn color={C.blue} title="수정" onClick={() => setAppForm({ ...app })}>
-                          <Pencil size={15} />
-                        </IconBtn>
-                        <IconBtn color={C.coral} title="삭제" onClick={() => setApps((p) => dataService.handleDelete(p, app.id))}>
-                          <Trash2 size={15} />
-                        </IconBtn>
-                      </div>
-                    )}
-                  </div>
-                  <h3 className="text-lg font-extrabold mb-2">{app.title}</h3>
-                  <p className="text-sm leading-relaxed mb-4" style={{ color: C.gray }}>{app.desc}</p>
-                  <a
-                    href={app.link || "#"}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(e) => { if (!app.link || app.link === "#") e.preventDefault(); }}
-                    className="inline-flex items-center gap-1.5 text-sm font-bold"
-                    style={{ color: C.blue }}
+            {apps.map((app, i) => {
+              const url = normalizeUrl(app.link);
+              /* 카드 전체가 링크 — 관리자 모드에서는 수정/삭제를 위해 div로 전환 */
+              const CardTag = url && !editMode ? "a" : "div";
+              const cardProps =
+                url && !editMode
+                  ? { href: url, target: "_blank", rel: "noopener noreferrer" }
+                  : {};
+              return (
+                <FadeIn key={app.id} delay={i * 0.1}>
+                  <CardTag
+                    {...cardProps}
+                    className={`block rounded-3xl p-7 h-full transition-transform ${
+                      url && !editMode ? "hover:-translate-y-1.5 cursor-pointer" : ""
+                    }`}
+                    style={glass}
                   >
-                    웹앱 바로가기 <ExternalLink size={14} />
-                  </a>
-                </div>
-              </FadeIn>
-            ))}
+                    <div className="flex items-start justify-between mb-4">
+                      <span className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: `linear-gradient(135deg,${C.blue}18,${C.coral}18)` }}>
+                        <Cpu size={23} style={{ color: C.blue }} />
+                      </span>
+                      {editMode && (
+                        <div className="flex gap-1.5">
+                          <IconBtn color={C.blue} title="수정" onClick={() => setAppForm({ ...app })}>
+                            <Pencil size={15} />
+                          </IconBtn>
+                          <IconBtn color={C.coral} title="삭제" onClick={() => deleteApp(app.id)}>
+                            <Trash2 size={15} />
+                          </IconBtn>
+                        </div>
+                      )}
+                    </div>
+                    <h3 className="text-lg font-extrabold mb-2">{app.title}</h3>
+                    <p className="text-sm leading-relaxed mb-4" style={{ color: C.gray }}>{app.desc}</p>
+
+                    {url ? (
+                      editMode ? (
+                        /* 관리자 모드: 카드가 div이므로 링크를 별도 a로 제공 */
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-sm font-bold hover:underline"
+                          style={{ color: C.blue }}
+                        >
+                          웹앱 바로가기 <ExternalLink size={14} />
+                        </a>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-sm font-bold" style={{ color: C.blue }}>
+                          웹앱 바로가기 <ExternalLink size={14} />
+                        </span>
+                      )
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-sm font-bold" style={{ color: "#CBD5E1" }}>
+                        링크 준비 중 <ExternalLink size={14} />
+                      </span>
+                    )}
+                  </CardTag>
+                </FadeIn>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -742,8 +894,17 @@ export default function App() {
                       "PC에서 파일 선택 (클릭)"
                     )}
                   </label>
-                  <button onClick={saveMaterial} className="mt-3 w-full py-2.5 rounded-xl font-bold text-white text-sm" style={{ background: t.color }}>
-                    {matForm.id ? "수정 완료" : "업로드"}
+                  <button
+                    onClick={saveMaterial}
+                    disabled={matSaving}
+                    className="mt-3 w-full py-2.5 rounded-xl font-bold text-white text-sm flex items-center justify-center gap-2 disabled:opacity-70"
+                    style={{ background: t.color }}
+                  >
+                    {matSaving ? (
+                      <>
+                        <Loader2 size={15} className="animate-spin" /> 업로드 중...
+                      </>
+                    ) : matForm.id ? "수정 완료" : "업로드"}
                   </button>
                 </div>
               )}
@@ -775,7 +936,7 @@ export default function App() {
                         </p>
                       </div>
                       <div className="flex gap-1.5 shrink-0">
-                        <IconBtn color={C.emerald} title="다운로드" onClick={() => {}}>
+                        <IconBtn color={C.emerald} title="다운로드" onClick={() => downloadMaterial(m)}>
                           <Download size={15} />
                         </IconBtn>
                         {editMode && (
@@ -783,7 +944,7 @@ export default function App() {
                             <IconBtn color={C.blue} title="수정" onClick={() => setMatForm({ ...m })}>
                               <Pencil size={15} />
                             </IconBtn>
-                            <IconBtn color={C.coral} title="삭제" onClick={() => deleteMaterial(m.id)}>
+                            <IconBtn color={C.coral} title="삭제" onClick={() => deleteMaterial(m)}>
                               <Trash2 size={15} />
                             </IconBtn>
                           </>
@@ -984,6 +1145,67 @@ export default function App() {
           </FadeIn>
         </div>
       </section>
+
+      {/* ================= 관리자 로그인 모달 ================= */}
+      {loginForm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ background: "rgba(15,23,42,0.45)", backdropFilter: "blur(4px)" }}
+          onClick={() => !loginForm.busy && setLoginForm(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl p-7"
+            style={{ background: "#fff", boxShadow: "0 24px 60px rgba(15,23,42,0.3)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <h4 className="font-extrabold flex items-center gap-2">
+                <ShieldCheck size={18} style={{ color: C.blue }} /> 관리자 로그인
+              </h4>
+              <button onClick={() => setLoginForm(null)}>
+                <X size={18} style={{ color: C.gray }} />
+              </button>
+            </div>
+            <p className="text-xs mb-4" style={{ color: C.gray }}>
+              자료실과 웹앱을 수정하려면 관리자 계정으로 로그인하세요.
+            </p>
+            <div className="flex flex-col gap-3">
+              <input
+                type="email"
+                className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+                style={{ border: "1.5px solid #E2E8F0" }}
+                placeholder="관리자 이메일"
+                value={loginForm.email}
+                onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
+              />
+              <input
+                type="password"
+                className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+                style={{ border: "1.5px solid #E2E8F0" }}
+                placeholder="비밀번호"
+                value={loginForm.pw}
+                onChange={(e) => setLoginForm({ ...loginForm, pw: e.target.value })}
+                onKeyDown={(e) => { if (e.key === "Enter" && !loginForm.busy) doLogin(); }}
+              />
+              {loginForm.error && (
+                <p className="text-xs font-semibold" style={{ color: C.coral }}>{loginForm.error}</p>
+              )}
+              <button
+                onClick={doLogin}
+                disabled={loginForm.busy}
+                className="w-full py-2.5 rounded-xl font-bold text-white text-sm flex items-center justify-center gap-2 disabled:opacity-70"
+                style={{ background: C.blue }}
+              >
+                {loginForm.busy ? (
+                  <>
+                    <Loader2 size={15} className="animate-spin" /> 확인 중...
+                  </>
+                ) : "로그인"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ================= FOOTER ================= */}
       <footer className="py-12 px-4" style={{ borderTop: "1px solid #E2E8F0" }}>

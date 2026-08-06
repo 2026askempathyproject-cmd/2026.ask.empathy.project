@@ -43,6 +43,60 @@ npm run dev
 
 깃허브에 푸시한 뒤 [Vercel](https://vercel.com)에서 저장소를 import하면 `api/generate.js`가 서버리스 함수로 자동 배포됩니다. Vercel 대시보드 → Settings → Environment Variables에 `GEMINI_API_KEY`를 등록하세요 (`.env` 파일은 배포에 사용되지 않음). GitHub Pages는 서버 함수를 지원하지 않아 이 구조에서는 사용할 수 없습니다.
 
+## Firebase 연동 (자료실·웹앱 실제 저장)
+
+`src/firebase.js`의 설정을 채우면 자료실 파일 업로드와 웹앱 목록이 실제로 저장됩니다. 설정 전에는 새로고침하면 사라지는 로컬 임시 모드로 동작합니다.
+
+### 1. Firebase 프로젝트 만들기
+
+[Firebase 콘솔](https://console.firebase.google.com)에서 프로젝트 추가 (블라인드 유지를 위해 프로젝트 이름은 `ask-empathy-project`처럼 익명으로). Google 애널리틱스는 꺼도 됩니다.
+
+### 2. 웹 앱 등록 후 설정 복사
+
+프로젝트 개요 → 웹(`</>`) 아이콘 → 앱 등록 → 표시되는 `firebaseConfig` 값을 `src/firebase.js`의 같은 자리에 붙여넣기. 이 값들은 공개용 식별자라 깃허브에 올라가도 안전합니다 (보안은 아래 규칙이 담당).
+
+### 3. Authentication (관리자 계정)
+
+빌드 → Authentication → 시작하기 → 로그인 방법에서 **이메일/비밀번호** 사용 설정 → 사용자 탭 → **사용자 추가**로 관리자용 이메일·비밀번호 생성. 이 계정으로만 사이트의 관리자 모드에 로그인할 수 있습니다.
+
+### 4. Firestore Database
+
+빌드 → Firestore Database → 데이터베이스 만들기 → 위치 `asia-northeast3`(서울) → **프로덕션 모드** → 만들기. 그 다음 규칙 탭에 아래를 붙여넣고 게시:
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}
+```
+
+### 5. Storage (파일 업로드)
+
+빌드 → Storage → 시작하기 → 규칙 탭에 아래를 붙여넣고 게시:
+
+```
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}
+```
+
+규칙 의미: 누구나 자료를 볼 수는 있지만, 추가·수정·삭제·업로드는 로그인한 관리자만 가능합니다.
+
+### 6. 배포 반영
+
+`src/firebase.js` 저장 후 커밋·푸시하면 Vercel이 자동 재배포합니다.
+
 ## AI 기획자 동작 원리
 
 `api/standards.json`(2022 개정 교육과정 초등 성취기준 611개)에서 선택한 학년군·적용교과의 성취기준을 추출하고, 연구 모형(공·감·문·해 4단계, ASK 역량, Sim-to-Real, 학년 발달 단계)을 프롬프트에 담아 Gemini에게 JSON 형식의 4단계 지도안을 요청합니다. 응답에는 실제 성취기준 코드가 그대로 인용됩니다.
