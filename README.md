@@ -45,15 +45,26 @@ npm run dev
 
 ## Firebase 연동 (자료실·웹앱 실제 저장)
 
-`src/firebase.js`의 설정을 채우면 자료실 파일 업로드와 웹앱 목록이 실제로 저장됩니다. 설정 전에는 새로고침하면 사라지는 로컬 임시 모드로 동작합니다.
+`.env`에 Firebase 설정을 채우면 자료실 파일 업로드와 웹앱 목록이 실제로 저장됩니다. 설정 전에는 새로고침하면 사라지는 로컬 임시 모드로 동작합니다.
 
 ### 1. Firebase 프로젝트 만들기
 
 [Firebase 콘솔](https://console.firebase.google.com)에서 프로젝트 추가 (블라인드 유지를 위해 프로젝트 이름은 `ask-empathy-project`처럼 익명으로). Google 애널리틱스는 꺼도 됩니다.
 
-### 2. 웹 앱 등록 후 설정 복사
+### 2. 웹 앱 등록 후 설정을 .env에 입력
 
-프로젝트 개요 → 웹(`</>`) 아이콘 → 앱 등록 → 표시되는 `firebaseConfig` 값을 `src/firebase.js`의 같은 자리에 붙여넣기. 이 값들은 공개용 식별자라 깃허브에 올라가도 안전합니다 (보안은 아래 규칙이 담당).
+프로젝트 개요 → 웹(`</>`) 아이콘 → 앱 등록 → 표시되는 `firebaseConfig` 값을 `.env`의 `VITE_FIREBASE_*` 항목에 옮겨 적습니다. 대응 관계는 다음과 같습니다:
+
+| firebaseConfig | .env 변수 |
+| --- | --- |
+| `apiKey` | `VITE_FIREBASE_API_KEY` |
+| `authDomain` | `VITE_FIREBASE_AUTH_DOMAIN` |
+| `projectId` | `VITE_FIREBASE_PROJECT_ID` |
+| `storageBucket` | `VITE_FIREBASE_STORAGE_BUCKET` |
+| `messagingSenderId` | `VITE_FIREBASE_MESSAGING_SENDER_ID` |
+| `appId` | `VITE_FIREBASE_APP_ID` |
+
+값에 따옴표는 붙이지 않습니다 (`VITE_FIREBASE_PROJECT_ID=my-project` 형태). `.env`를 수정하면 `npm run dev`를 재시작해야 반영됩니다.
 
 ### 3. Authentication (관리자 계정)
 
@@ -93,9 +104,24 @@ service firebase.storage {
 
 규칙 의미: 누구나 자료를 볼 수는 있지만, 추가·수정·삭제·업로드는 로그인한 관리자만 가능합니다.
 
-### 6. 배포 반영
+### 6. Vercel에 환경변수 등록 (배포용, 필수)
 
-`src/firebase.js` 저장 후 커밋·푸시하면 Vercel이 자동 재배포합니다.
+`.env`는 깃허브에 올라가지 않으므로 배포 환경에는 따로 등록해야 합니다. Vercel 프로젝트 → Settings → Environment Variables에서 아래 6개를 추가하세요 (값은 `.env`와 동일, Environments는 Production and Preview):
+
+```
+VITE_FIREBASE_API_KEY
+VITE_FIREBASE_AUTH_DOMAIN
+VITE_FIREBASE_PROJECT_ID
+VITE_FIREBASE_STORAGE_BUCKET
+VITE_FIREBASE_MESSAGING_SENDER_ID
+VITE_FIREBASE_APP_ID
+```
+
+등록만으로는 적용되지 않습니다. Deployments → 최신 배포 `⋯` → **Redeploy**를 눌러야 반영됩니다. 빠뜨리면 배포된 사이트에서 자료실이 로컬 임시 모드로 동작합니다.
+
+### 7. 승인된 도메인 추가
+
+Authentication → Settings → 승인된 도메인에 배포 주소(`2026-ask-empathy-project.vercel.app`)를 추가해야 배포 사이트에서 관리자 로그인이 됩니다.
 
 ## AI 기획자 동작 원리
 

@@ -1,32 +1,37 @@
 /**
  * Firebase 설정 (자료실·웹앱 CRUD 저장소)
  *
- * ★ 아래 firebaseConfig는 Firebase 콘솔 → 프로젝트 설정 → 내 앱(웹) → SDK 설정에서
- *   복사한 값으로 교체하세요.
+ * 설정값은 .env 파일에서 읽습니다. (.env는 .gitignore로 깃허브에서 제외됨)
+ * .env.example을 복사해 .env를 만들고 Firebase 콘솔 →
+ * 프로젝트 설정 → 내 앱(웹) → SDK 설정의 값을 채우세요.
  *
- * ★ 보안 안내: 여기 들어가는 apiKey는 Gemini 키와 달리 '공개용 식별자'로,
- *   브라우저에 노출되어도 안전하도록 설계되어 있습니다. 실제 보안(누가 쓰고
- *   지울 수 있는지)은 Firestore/Storage '보안 규칙'이 담당합니다.
- *   규칙은 README의 [Firebase 보안 규칙] 부분을 그대로 붙여넣으세요.
- *   (Gemini 키는 지금처럼 절대 이 파일이나 src/ 안에 넣으면 안 됩니다.)
+ * ★ 배포(Vercel) 시 주의: 아래 VITE_FIREBASE_* 6개를 Vercel의
+ *   Environment Variables에도 똑같이 등록해야 배포된 사이트에서 작동합니다.
+ *
+ * ★ 보안 안내: VITE_ 접두사가 붙은 값은 브라우저 번들에 포함됩니다.
+ *   Firebase 웹 설정값은 원래 공개용 식별자라 이래도 안전하며, 실제 보안은
+ *   Firestore/Storage '보안 규칙'이 담당합니다 (README 참고).
+ *   반면 GEMINI_API_KEY는 절대 VITE_를 붙이거나 src/ 안에서 읽으면 안 됩니다.
  */
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getAuth } from "firebase/auth";
 
+const env = import.meta.env;
+
 const firebaseConfig = {
-  apiKey: "여기에_붙여넣기",
-  authDomain: "여기에_붙여넣기.firebaseapp.com",
-  projectId: "여기에_붙여넣기",
-  storageBucket: "여기에_붙여넣기.firebasestorage.app",
-  messagingSenderId: "여기에_붙여넣기",
-  appId: "여기에_붙여넣기",
+  apiKey: env.VITE_FIREBASE_API_KEY,
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: env.VITE_FIREBASE_APP_ID,
 };
 
-/** 설정을 아직 안 채웠으면 false → 앱은 로컬 임시 모드(useState)로 동작 */
-export const firebaseReady = !Object.values(firebaseConfig).some((v) =>
-  String(v).includes("여기에_붙여넣기")
+/** 6개 값이 모두 채워졌을 때만 Firebase 사용, 아니면 로컬 임시 모드(useState) */
+export const firebaseReady = Object.values(firebaseConfig).every(
+  (v) => typeof v === "string" && v.trim().length > 0
 );
 
 let db = null;
@@ -38,6 +43,10 @@ if (firebaseReady) {
   db = getFirestore(app);
   storage = getStorage(app);
   auth = getAuth(app);
+} else if (typeof window !== "undefined") {
+  console.info(
+    "[Firebase] 설정이 없어 로컬 임시 모드로 동작합니다. .env에 VITE_FIREBASE_* 값을 채우세요."
+  );
 }
 
 export { db, storage, auth };
