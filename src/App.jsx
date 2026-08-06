@@ -193,7 +193,8 @@ export default function App() {
 
   /* ---------- 관리자 인증 (Firebase Auth · 구글 로그인) ---------- */
   const [user, setUser] = useState(null);
-  const [loginModal, setLoginModal] = useState(null); // null | {error, busy}
+  const [loginModal, setLoginModal] = useState(null); // null | {error}
+  const [loggingIn, setLoggingIn] = useState(false);
 
   /**
    * 지정된 관리자 계정인지 판별.
@@ -213,14 +214,14 @@ export default function App() {
 
   const toggleEdit = () => {
     if (editMode) return setEditMode(false);
-    // Firebase 모드에서는 관리자 계정으로 로그인해야 진입 가능
-    if (firebaseReady && !isAdmin(user))
-      return setLoginModal({ error: null, busy: false });
+    // Firebase 모드에서는 곧바로 구글 로그인 창을 띄운다
+    if (firebaseReady && !isAdmin(user)) return doGoogleLogin();
     setEditMode(true);
   };
 
   const doGoogleLogin = async () => {
-    setLoginModal({ error: null, busy: true });
+    setLoginModal(null);
+    setLoggingIn(true);
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
@@ -228,7 +229,6 @@ export default function App() {
       if (!isAdmin(u)) {
         await signOut(auth);
         return setLoginModal({
-          busy: false,
           error: !ADMIN_EMAIL
             ? "관리자 계정이 설정되지 않았습니다. .env의 VITE_ADMIN_EMAIL을 확인해 주세요."
             : `${u.email} 계정은 관리자로 등록되어 있지 않습니다. 등록된 관리자 구글 계정으로 로그인해 주세요.`,
@@ -239,15 +239,18 @@ export default function App() {
     } catch (e) {
       const code = e?.code || "";
       if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
-        return setLoginModal(null); // 사용자가 창을 닫음 — 조용히 종료
+        return; // 사용자가 창을 닫음 — 조용히 종료
       }
       setLoginModal({
-        busy: false,
         error:
-          code === "auth/unauthorized-domain"
+          code === "auth/popup-blocked"
+            ? "브라우저가 로그인 창을 차단했습니다. 주소창의 팝업 차단 아이콘을 눌러 허용해 주세요."
+            : code === "auth/unauthorized-domain"
             ? "이 주소가 Firebase 승인된 도메인에 없습니다. 콘솔 → Authentication → Settings에서 추가해 주세요."
             : "로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.",
       });
+    } finally {
+      setLoggingIn(false);
     }
   };
 
@@ -482,8 +485,12 @@ export default function App() {
                 border: `1px solid ${editMode ? C.coral : "#E2E8F0"}`,
               }}
             >
-              <Settings size={15} className={editMode ? "animate-spin" : ""} style={{ animationDuration: "3s" }} />
-              {editMode ? "Edit Mode ON" : "관리자 모드"}
+              {loggingIn ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <Settings size={15} className={editMode ? "animate-spin" : ""} style={{ animationDuration: "3s" }} />
+              )}
+              {loggingIn ? "로그인 중..." : editMode ? "Edit Mode ON" : "관리자 모드"}
             </button>
             {firebaseReady && user && (
               <button
@@ -1277,7 +1284,7 @@ export default function App() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center px-4"
           style={{ background: "rgba(15,23,42,0.45)", backdropFilter: "blur(4px)" }}
-          onClick={() => !loginModal.busy && setLoginModal(null)}
+          onClick={() => !loggingIn && setLoginModal(null)}
         >
           <div
             className="w-full max-w-sm rounded-3xl p-7"
@@ -1286,36 +1293,29 @@ export default function App() {
           >
             <div className="flex items-center justify-between mb-5">
               <h4 className="font-extrabold flex items-center gap-2">
-                <ShieldCheck size={18} style={{ color: C.blue }} /> 관리자 로그인
+                <ShieldCheck size={18} style={{ color: C.blue }} /> 로그인할 수 없습니다
               </h4>
               <button onClick={() => setLoginModal(null)}>
                 <X size={18} style={{ color: C.gray }} />
               </button>
             </div>
-            <p className="text-sm mb-5 leading-relaxed" style={{ color: C.gray }}>
-              자료실과 웹앱을 수정하려면 <b style={{ color: C.ink }}>관리자 구글 계정</b>으로
-              로그인하세요.
-            </p>
-
-            {loginModal.error && (
-              <div
-                className="flex items-start gap-2 rounded-xl p-3 mb-4"
-                style={{ background: "#FFF1F2", border: `1px solid ${C.coral}33` }}
-              >
-                <AlertTriangle size={15} className="shrink-0 mt-0.5" style={{ color: C.coral }} />
-                <p className="text-xs leading-relaxed" style={{ color: C.coral }}>
-                  {loginModal.error}
-                </p>
-              </div>
-            )}
+            <div
+              className="flex items-start gap-2 rounded-xl p-3 mb-5"
+              style={{ background: "#FFF1F2", border: `1px solid ${C.coral}33` }}
+            >
+              <AlertTriangle size={15} className="shrink-0 mt-0.5" style={{ color: C.coral }} />
+              <p className="text-xs leading-relaxed" style={{ color: C.coral }}>
+                {loginModal.error}
+              </p>
+            </div>
 
             <button
               onClick={doGoogleLogin}
-              disabled={loginModal.busy}
+              disabled={loggingIn}
               className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2.5 transition-transform hover:scale-[1.02] disabled:opacity-70"
               style={{ border: "1.5px solid #E2E8F0", background: "#fff", color: C.ink }}
             >
-              {loginModal.busy ? (
+              {loggingIn ? (
                 <>
                   <Loader2 size={17} className="animate-spin" /> 확인 중...
                 </>
@@ -1328,14 +1328,10 @@ export default function App() {
                     <path fill="#FBBC05" d="M10.4 28.7c-.5-1.4-.8-2.9-.8-4.7s.3-3.3.8-4.7l-7.8-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.6 10.8l7.8-6.1z" />
                     <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.8 2.3-8.3 2.3-6.4 0-11.7-3.7-13.6-9.9l-7.8 6.1C6.5 42.6 14.6 48 24 48z" />
                   </svg>
-                  구글 계정으로 로그인
+                  다시 로그인하기
                 </>
               )}
             </button>
-
-            <p className="text-xs mt-4 text-center" style={{ color: "#94A3B8" }}>
-              등록된 관리자 계정만 수정할 수 있습니다.
-            </p>
           </div>
         </div>
       )}
