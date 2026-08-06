@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vercel/blob": "^0.27.0",
     "firebase": "^11.0.0",
     "framer-motion": "^11.11.0",
     "lucide-react": "^0.383.0",

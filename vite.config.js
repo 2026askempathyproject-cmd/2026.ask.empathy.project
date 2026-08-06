@@ -2,6 +2,21 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { generatePlan } from "./api/_lib.mjs";
+import { handleUploadRequest } from "./api/_upload-lib.mjs";
+
+/** 요청 본문(JSON)을 모아서 반환 */
+const readJson = (req) =>
+  new Promise((resolve) => {
+    let raw = "";
+    req.on("data", (c) => (raw += c));
+    req.on("end", () => {
+      try {
+        resolve(JSON.parse(raw || "{}"));
+      } catch {
+        resolve({});
+      }
+    });
+  });
 
 /**
  * 개발 서버(npm run dev)에서 /api/generate 요청을 처리하는 미들웨어.
@@ -17,31 +32,51 @@ export default defineConfig(({ mode }) => {
       react(),
       tailwindcss(),
       {
-        name: "dev-api-generate",
+        name: "dev-api",
         configureServer(server) {
-          server.middlewares.use("/api/generate", (req, res) => {
+          // AI 기획자
+          server.middlewares.use("/api/generate", async (req, res) => {
+            res.setHeader("Content-Type", "application/json; charset=utf-8");
             if (req.method !== "POST") {
               res.statusCode = 405;
               return res.end(JSON.stringify({ error: "POST only" }));
             }
-            let body = "";
-            req.on("data", (chunk) => (body += chunk));
-            req.on("end", async () => {
-              res.setHeader("Content-Type", "application/json; charset=utf-8");
-              try {
-                const { grade, keyword } = JSON.parse(body || "{}");
-                const plan = await generatePlan({
-                  grade,
-                  keyword,
-                  apiKey: env.GEMINI_API_KEY,
-                  model: env.GEMINI_MODEL,
-                });
-                res.end(JSON.stringify(plan));
-              } catch (e) {
-                res.statusCode = 500;
-                res.end(JSON.stringify({ error: e.message }));
-              }
-            });
+            try {
+              const { grade, keyword } = await readJson(req);
+              const plan = await generatePlan({
+                grade,
+                keyword,
+                apiKey: env.GEMINI_API_KEY,
+                model: env.GEMINI_MODEL,
+              });
+              res.end(JSON.stringify(plan));
+            } catch (e) {
+              res.statusCode = 500;
+              res.end(JSON.stringify({ error: e.message }));
+            }
+          });
+
+          // 자료실 파일 업로드 토큰 발급
+          server.middlewares.use("/api/upload", async (req, res) => {
+            res.setHeader("Content-Type", "application/json; charset=utf-8");
+            if (req.method !== "POST") {
+              res.statusCode = 405;
+              return res.end(JSON.stringify({ error: "POST only" }));
+            }
+            try {
+              const body = await readJson(req);
+              const result = await handleUploadRequest({
+                body,
+                request: req,
+                token: env.BLOB_READ_WRITE_TOKEN,
+                firebaseApiKey: env.VITE_FIREBASE_API_KEY,
+                adminEmail: env.VITE_ADMIN_EMAIL,
+              });
+              res.end(JSON.stringify(result));
+            } catch (e) {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ error: e.message }));
+            }
           });
         },
       },

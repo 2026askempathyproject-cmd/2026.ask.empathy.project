@@ -1,20 +1,23 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
-import { firebaseReady, db, storage, auth } from "./firebase.js";
+import { firebaseReady, db, auth } from "./firebase.js";
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc,
 } from "firebase/firestore";
+import { upload as blobUpload } from "@vercel/blob/client";
 import {
-  ref as sRef, uploadBytes, getDownloadURL, deleteObject,
-} from "firebase/storage";
-import { onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
+  onAuthStateChanged, signInWithPopup, signOut, GoogleAuthProvider,
+} from "firebase/auth";
+
+/** 관리자로 인정할 구글 계정 (.env의 VITE_ADMIN_EMAIL) */
+const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL || "").trim().toLowerCase();
 import {
   Heart, Ear, PenLine, Link2, Sparkles, Bot, Cpu, Globe2, BookOpen,
   Share2, Lightbulb, Plus, Pencil, Trash2, X, Upload, FileText,
   ExternalLink, Settings, Loader2, Rocket, TrendingUp, ChevronRight,
   Layers, Wand2, ShieldCheck, RefreshCw, GraduationCap, Menu, Check,
   MonitorSmartphone, School, Earth, Compass, Download, File, Target,
-  ClipboardCheck, AlertTriangle, BadgeCheck
+  ClipboardCheck, AlertTriangle, BadgeCheck, LogOut
 } from "lucide-react";
 
 /* ============================================================
@@ -188,36 +191,69 @@ export default function App() {
   const [editMode, setEditMode] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  /* ---------- 관리자 인증 (Firebase Auth) ---------- */
+  /* ---------- 관리자 인증 (Firebase Auth · 구글 로그인) ---------- */
   const [user, setUser] = useState(null);
-  const [loginForm, setLoginForm] = useState(null); // null | {email, pw, error, busy}
+  const [loginModal, setLoginModal] = useState(null); // null | {error, busy}
+
+  /**
+   * 지정된 관리자 계정인지 판별.
+   * ADMIN_EMAIL이 설정되지 않았으면 아무도 통과시키지 않는다(안전 우선).
+   * 최종 차단은 Firestore 보안 규칙이 담당한다.
+   */
+  const isAdmin = (u) =>
+    !!u && !!ADMIN_EMAIL && (u.email || "").toLowerCase() === ADMIN_EMAIL;
 
   useEffect(() => {
     if (!firebaseReady || !auth) return;
-    return onAuthStateChanged(auth, (u) => setUser(u));
+    return onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      if (!isAdmin(u)) setEditMode(false);
+    });
   }, []);
 
   const toggleEdit = () => {
     if (editMode) return setEditMode(false);
-    // Firebase 모드에서는 로그인해야 관리자 모드 진입 가능
-    if (firebaseReady && !user)
-      return setLoginForm({ email: "", pw: "", error: null, busy: false });
+    // Firebase 모드에서는 관리자 계정으로 로그인해야 진입 가능
+    if (firebaseReady && !isAdmin(user))
+      return setLoginModal({ error: null, busy: false });
     setEditMode(true);
   };
 
-  const doLogin = async () => {
-    setLoginForm((f) => ({ ...f, error: null, busy: true }));
+  const doGoogleLogin = async () => {
+    setLoginModal({ error: null, busy: true });
     try {
-      await signInWithEmailAndPassword(auth, loginForm.email.trim(), loginForm.pw);
-      setLoginForm(null);
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      const { user: u } = await signInWithPopup(auth, provider);
+      if (!isAdmin(u)) {
+        await signOut(auth);
+        return setLoginModal({
+          busy: false,
+          error: !ADMIN_EMAIL
+            ? "관리자 계정이 설정되지 않았습니다. .env의 VITE_ADMIN_EMAIL을 확인해 주세요."
+            : `${u.email} 계정은 관리자로 등록되어 있지 않습니다. 등록된 관리자 구글 계정으로 로그인해 주세요.`,
+        });
+      }
+      setLoginModal(null);
       setEditMode(true);
-    } catch {
-      setLoginForm((f) => ({
-        ...f,
+    } catch (e) {
+      const code = e?.code || "";
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+        return setLoginModal(null); // 사용자가 창을 닫음 — 조용히 종료
+      }
+      setLoginModal({
         busy: false,
-        error: "로그인에 실패했습니다. 이메일과 비밀번호를 확인해 주세요.",
-      }));
+        error:
+          code === "auth/unauthorized-domain"
+            ? "이 주소가 Firebase 승인된 도메인에 없습니다. 콘솔 → Authentication → Settings에서 추가해 주세요."
+            : "로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+      });
     }
+  };
+
+  const doLogout = async () => {
+    setEditMode(false);
+    if (firebaseReady && auth) await signOut(auth);
   };
 
   /* ---------- My Web Apps CRUD ---------- */
@@ -284,16 +320,38 @@ export default function App() {
 
   const saveMaterial = async () => {
     if (!matForm.name.trim() || matSaving) return;
+    const mode = matForm.mode || "file";
+
+    if (mode === "link") {
+      const url = normalizeUrl(matForm.fileUrl);
+      if (!url) return alert("파일 링크 주소를 입력해 주세요.");
+      matForm.fileUrl = url;
+      matForm.fileName = matForm.fileName || `${matForm.name}.pdf`;
+    }
+
+    if (mode === "file" && !matForm._file && !matForm.fileUrl) {
+      return alert("업로드할 파일을 선택해 주세요.");
+    }
+
     if (firebaseReady) {
       setMatSaving(true);
       try {
         let fileFields = {};
-        if (matForm._file) {
-          // Storage 업로드 → 다운로드 URL 저장
-          const path = `materials/${activeTab}/${Date.now()}_${matForm._file.name}`;
-          const fileRef = sRef(storage, path);
-          await uploadBytes(fileRef, matForm._file);
-          fileFields = { fileUrl: await getDownloadURL(fileRef), filePath: path };
+        if (mode === "file" && matForm._file) {
+          // 브라우저 → Vercel Blob 직접 업로드 (서버가 관리자 확인 후 토큰 발급)
+          const idToken = auth?.currentUser
+            ? await auth.currentUser.getIdToken()
+            : null;
+          const blob = await blobUpload(
+            `materials/${activeTab}/${matForm._file.name}`,
+            matForm._file,
+            {
+              access: "public",
+              handleUploadUrl: "/api/upload",
+              clientPayload: JSON.stringify({ idToken }),
+            }
+          );
+          fileFields = { fileUrl: blob.url, filePath: blob.pathname };
         }
         const { id, _file, ...data } = matForm;
         const payload = { ...data, ...fileFields, tab: activeTab };
@@ -301,7 +359,12 @@ export default function App() {
         else await addDoc(collection(db, "materials"), payload);
         setMatForm(null);
       } catch (err) {
-        alert("저장에 실패했습니다: " + (err?.message || err));
+        const msg = String(err?.message || err);
+        alert(
+          /BLOB_READ_WRITE_TOKEN|Blob 저장소/i.test(msg)
+            ? "파일 저장소가 아직 준비되지 않았습니다.\nVercel → Storage에서 Blob 저장소를 만들어 주세요. (지금은 '링크 등록'을 사용하세요)"
+            : "저장에 실패했습니다: " + msg
+        );
       } finally {
         setMatSaving(false);
       }
@@ -319,13 +382,6 @@ export default function App() {
   const deleteMaterial = async (item) => {
     if (firebaseReady) {
       await deleteDoc(doc(db, "materials", String(item.id)));
-      if (item.filePath) {
-        try {
-          await deleteObject(sRef(storage, item.filePath));
-        } catch {
-          /* 파일이 이미 없어도 무시 */
-        }
-      }
     } else {
       setMaterials((prev) => ({
         ...prev,
@@ -335,7 +391,9 @@ export default function App() {
   };
 
   const downloadMaterial = (m) => {
-    if (m.fileUrl) window.open(m.fileUrl, "_blank", "noopener");
+    const url = normalizeUrl(m.fileUrl);
+    if (url) window.open(url, "_blank", "noopener,noreferrer");
+    else alert("등록된 파일 링크가 없습니다.");
   };
 
   /* ---------- AI 기획자 ---------- */
@@ -427,6 +485,16 @@ export default function App() {
               <Settings size={15} className={editMode ? "animate-spin" : ""} style={{ animationDuration: "3s" }} />
               {editMode ? "Edit Mode ON" : "관리자 모드"}
             </button>
+            {firebaseReady && user && (
+              <button
+                onClick={doLogout}
+                title="로그아웃"
+                className="p-2 rounded-full transition-transform hover:scale-110"
+                style={{ background: "rgba(255,255,255,0.9)", border: "1px solid #E2E8F0", color: C.gray }}
+              >
+                <LogOut size={15} />
+              </button>
+            )}
             <button className="md:hidden p-2" onClick={() => setMenuOpen((v) => !v)}>
               <Menu size={22} />
             </button>
@@ -693,13 +761,24 @@ export default function App() {
                   value={appForm.desc}
                   onChange={(e) => setAppForm({ ...appForm, desc: e.target.value })}
                 />
-                <input
-                  className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
-                  style={{ border: "1.5px solid #E2E8F0", background: "#fff" }}
-                  placeholder="링크 주소 (예: entry.org 또는 https://entry.org)"
-                  value={appForm.link}
-                  onChange={(e) => setAppForm({ ...appForm, link: e.target.value })}
-                />
+                <div>
+                  <input
+                    className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+                    style={{ border: "1.5px solid #E2E8F0", background: "#fff" }}
+                    placeholder="링크 주소 (예: entry.org 또는 https://entry.org)"
+                    value={appForm.link}
+                    onChange={(e) => setAppForm({ ...appForm, link: e.target.value })}
+                  />
+                  {normalizeUrl(appForm.link) ? (
+                    <p className="mt-1.5 text-xs flex items-center gap-1" style={{ color: C.emerald }}>
+                      <Check size={12} /> 이동할 주소: {normalizeUrl(appForm.link)}
+                    </p>
+                  ) : (
+                    <p className="mt-1.5 text-xs" style={{ color: "#94A3B8" }}>
+                      주소를 입력하면 카드 전체를 눌러 바로 이동할 수 있습니다.
+                    </p>
+                  )}
+                </div>
                 <button onClick={saveApp} className="w-full py-2.5 rounded-xl font-bold text-white text-sm" style={{ background: C.blue }}>
                   {appForm.id ? "수정 완료" : "추가하기"}
                 </button>
@@ -731,7 +810,7 @@ export default function App() {
                       </span>
                       {editMode && (
                         <div className="flex gap-1.5">
-                          <IconBtn color={C.blue} title="수정" onClick={() => setAppForm({ ...app })}>
+                          <IconBtn color={C.blue} title="수정" onClick={() => setAppForm({ ...app, link: app.link === "#" ? "" : app.link || "" })}>
                             <Pencil size={15} />
                           </IconBtn>
                           <IconBtn color={C.coral} title="삭제" onClick={() => deleteApp(app.id)}>
@@ -845,7 +924,7 @@ export default function App() {
                 </div>
                 {editMode && (
                   <button
-                    onClick={() => setMatForm({ name: "", type: "요약본", fileName: null, fileSize: null })}
+                    onClick={() => setMatForm({ name: "", type: "요약본", mode: "file", fileUrl: "", fileName: null, fileSize: null })}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-white text-sm shrink-0 transition-transform hover:scale-105"
                     style={{ background: t.color, boxShadow: `0 6px 16px ${t.color}55` }}
                   >
@@ -882,18 +961,63 @@ export default function App() {
                       <option value="과정안">과정안</option>
                     </select>
                   </div>
-                  <label
-                    className="mt-3 flex items-center justify-center gap-2 w-full py-4 rounded-xl cursor-pointer text-sm font-semibold transition-colors"
-                    style={{ border: "1.5px dashed #94A3B8", color: C.gray, background: "#fff" }}
-                  >
-                    <input ref={fileInputRef} type="file" className="hidden" onChange={onFilePick} />
-                    <Upload size={16} />
-                    {matForm.fileName ? (
-                      <span style={{ color: t.color }}>{matForm.fileName} ({matForm.fileSize})</span>
-                    ) : (
-                      "PC에서 파일 선택 (클릭)"
-                    )}
-                  </label>
+                  {/* 등록 방식 선택: 링크 / 파일 업로드 */}
+                  <div className="mt-3 flex gap-2">
+                    {[
+                      ["file", "파일 업로드", Upload],
+                      ["link", "링크 등록", Link2],
+                    ].map(([mode, label, Icon]) => {
+                      const on = (matForm.mode || "file") === mode;
+                      return (
+                        <button
+                          key={mode}
+                          onClick={() => setMatForm({ ...matForm, mode })}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-colors"
+                          style={{
+                            background: on ? t.color : "#fff",
+                            color: on ? "#fff" : C.gray,
+                            border: `1.5px solid ${on ? t.color : "#E2E8F0"}`,
+                          }}
+                        >
+                          <Icon size={13} /> {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {(matForm.mode || "file") === "link" ? (
+                    <>
+                      <input
+                        className="mt-3 w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+                        style={{ border: "1.5px solid #E2E8F0", background: "#fff" }}
+                        placeholder="파일 링크 주소 (구글 드라이브 공유 링크 등)"
+                        value={matForm.fileUrl || ""}
+                        onChange={(e) => setMatForm({ ...matForm, fileUrl: e.target.value })}
+                      />
+                      <p className="mt-1.5 text-xs" style={{ color: "#94A3B8" }}>
+                        구글 드라이브에 올린 뒤 공유 설정을 '링크가 있는 모든 사용자'로 바꾸고 링크를 붙여넣으세요.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <label
+                        className="mt-3 flex items-center justify-center gap-2 w-full py-4 rounded-xl cursor-pointer text-sm font-semibold transition-colors"
+                        style={{ border: "1.5px dashed #94A3B8", color: C.gray, background: "#fff" }}
+                      >
+                        <input ref={fileInputRef} type="file" className="hidden" onChange={onFilePick} />
+                        <Upload size={16} />
+                        {matForm.fileName ? (
+                          <span style={{ color: t.color }}>{matForm.fileName} ({matForm.fileSize})</span>
+                        ) : (
+                          "PC에서 파일 선택 (클릭)"
+                        )}
+                      </label>
+                      <p className="mt-1.5 text-xs" style={{ color: "#94A3B8" }}>
+                        PDF·한글·오피스 파일, 최대 50MB까지 올릴 수 있습니다.
+                      </p>
+                    </>
+                  )}
+
                   <button
                     onClick={saveMaterial}
                     disabled={matSaving}
@@ -902,9 +1026,9 @@ export default function App() {
                   >
                     {matSaving ? (
                       <>
-                        <Loader2 size={15} className="animate-spin" /> 업로드 중...
+                        <Loader2 size={15} className="animate-spin" /> 저장 중...
                       </>
-                    ) : matForm.id ? "수정 완료" : "업로드"}
+                    ) : matForm.id ? "수정 완료" : "등록하기"}
                   </button>
                 </div>
               )}
@@ -932,7 +1056,9 @@ export default function App() {
                           <p className="font-bold text-sm truncate">{m.name}</p>
                         </div>
                         <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: C.gray }}>
-                          <File size={11} /> {m.fileName} · {m.fileSize}
+                          {m.filePath ? <File size={11} /> : <Link2 size={11} />}
+                          {m.fileName || "자료"}
+                          {m.fileSize ? ` · ${m.fileSize}` : m.fileUrl ? " · 링크" : ""}
                         </p>
                       </div>
                       <div className="flex gap-1.5 shrink-0">
@@ -941,7 +1067,7 @@ export default function App() {
                         </IconBtn>
                         {editMode && (
                           <>
-                            <IconBtn color={C.blue} title="수정" onClick={() => setMatForm({ ...m })}>
+                            <IconBtn color={C.blue} title="수정" onClick={() => setMatForm({ ...m, mode: m.filePath ? "file" : "link" })}>
                               <Pencil size={15} />
                             </IconBtn>
                             <IconBtn color={C.coral} title="삭제" onClick={() => deleteMaterial(m)}>
@@ -1146,12 +1272,12 @@ export default function App() {
         </div>
       </section>
 
-      {/* ================= 관리자 로그인 모달 ================= */}
-      {loginForm && (
+      {/* ================= 관리자 로그인 모달 (구글 계정) ================= */}
+      {loginModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center px-4"
           style={{ background: "rgba(15,23,42,0.45)", backdropFilter: "blur(4px)" }}
-          onClick={() => !loginForm.busy && setLoginForm(null)}
+          onClick={() => !loginModal.busy && setLoginModal(null)}
         >
           <div
             className="w-full max-w-sm rounded-3xl p-7"
@@ -1162,47 +1288,54 @@ export default function App() {
               <h4 className="font-extrabold flex items-center gap-2">
                 <ShieldCheck size={18} style={{ color: C.blue }} /> 관리자 로그인
               </h4>
-              <button onClick={() => setLoginForm(null)}>
+              <button onClick={() => setLoginModal(null)}>
                 <X size={18} style={{ color: C.gray }} />
               </button>
             </div>
-            <p className="text-xs mb-4" style={{ color: C.gray }}>
-              자료실과 웹앱을 수정하려면 관리자 계정으로 로그인하세요.
+            <p className="text-sm mb-5 leading-relaxed" style={{ color: C.gray }}>
+              자료실과 웹앱을 수정하려면 <b style={{ color: C.ink }}>관리자 구글 계정</b>으로
+              로그인하세요.
             </p>
-            <div className="flex flex-col gap-3">
-              <input
-                type="email"
-                className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
-                style={{ border: "1.5px solid #E2E8F0" }}
-                placeholder="관리자 이메일"
-                value={loginForm.email}
-                onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
-              />
-              <input
-                type="password"
-                className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
-                style={{ border: "1.5px solid #E2E8F0" }}
-                placeholder="비밀번호"
-                value={loginForm.pw}
-                onChange={(e) => setLoginForm({ ...loginForm, pw: e.target.value })}
-                onKeyDown={(e) => { if (e.key === "Enter" && !loginForm.busy) doLogin(); }}
-              />
-              {loginForm.error && (
-                <p className="text-xs font-semibold" style={{ color: C.coral }}>{loginForm.error}</p>
-              )}
-              <button
-                onClick={doLogin}
-                disabled={loginForm.busy}
-                className="w-full py-2.5 rounded-xl font-bold text-white text-sm flex items-center justify-center gap-2 disabled:opacity-70"
-                style={{ background: C.blue }}
+
+            {loginModal.error && (
+              <div
+                className="flex items-start gap-2 rounded-xl p-3 mb-4"
+                style={{ background: "#FFF1F2", border: `1px solid ${C.coral}33` }}
               >
-                {loginForm.busy ? (
-                  <>
-                    <Loader2 size={15} className="animate-spin" /> 확인 중...
-                  </>
-                ) : "로그인"}
-              </button>
-            </div>
+                <AlertTriangle size={15} className="shrink-0 mt-0.5" style={{ color: C.coral }} />
+                <p className="text-xs leading-relaxed" style={{ color: C.coral }}>
+                  {loginModal.error}
+                </p>
+              </div>
+            )}
+
+            <button
+              onClick={doGoogleLogin}
+              disabled={loginModal.busy}
+              className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2.5 transition-transform hover:scale-[1.02] disabled:opacity-70"
+              style={{ border: "1.5px solid #E2E8F0", background: "#fff", color: C.ink }}
+            >
+              {loginModal.busy ? (
+                <>
+                  <Loader2 size={17} className="animate-spin" /> 확인 중...
+                </>
+              ) : (
+                <>
+                  {/* 구글 G 로고 */}
+                  <svg width="17" height="17" viewBox="0 0 48 48" aria-hidden="true">
+                    <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.6 9.5 24 9.5z" />
+                    <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.2-.4-4.6H24v9.1h12.4c-.5 2.9-2.2 5.4-4.7 7l7.6 5.9c4.4-4.1 6.8-10.1 6.8-17.4z" />
+                    <path fill="#FBBC05" d="M10.4 28.7c-.5-1.4-.8-2.9-.8-4.7s.3-3.3.8-4.7l-7.8-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.6 10.8l7.8-6.1z" />
+                    <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.8 2.3-8.3 2.3-6.4 0-11.7-3.7-13.6-9.9l-7.8 6.1C6.5 42.6 14.6 48 24 48z" />
+                  </svg>
+                  구글 계정으로 로그인
+                </>
+              )}
+            </button>
+
+            <p className="text-xs mt-4 text-center" style={{ color: "#94A3B8" }}>
+              등록된 관리자 계정만 수정할 수 있습니다.
+            </p>
           </div>
         </div>
       )}

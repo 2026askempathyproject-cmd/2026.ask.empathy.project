@@ -66,9 +66,13 @@ npm run dev
 
 값에 따옴표는 붙이지 않습니다 (`VITE_FIREBASE_PROJECT_ID=my-project` 형태). `.env`를 수정하면 `npm run dev`를 재시작해야 반영됩니다.
 
-### 3. Authentication (관리자 계정)
+### 3. Authentication (구글 로그인)
 
-빌드 → Authentication → 시작하기 → 로그인 방법에서 **이메일/비밀번호** 사용 설정 → 사용자 탭 → **사용자 추가**로 관리자용 이메일·비밀번호 생성. 이 계정으로만 사이트의 관리자 모드에 로그인할 수 있습니다.
+빌드 → Authentication → 시작하기 → 로그인 방법 탭 → **Google** 사용 설정 (프로젝트 지원 이메일 선택 후 저장). 별도로 사용자를 추가할 필요는 없습니다.
+
+그다음 `.env`의 `VITE_ADMIN_EMAIL`에 관리자로 쓸 구글 계정 주소를 적습니다. 이 계정이 아닌 사람이 로그인하면 곧바로 로그아웃되며 편집 화면에 들어갈 수 없습니다.
+
+> `VITE_ADMIN_EMAIL`은 화면 제어용일 뿐 실제 보안 장치가 아닙니다. 반드시 아래 4·5번의 보안 규칙에도 같은 이메일을 넣어야 데이터가 보호됩니다.
 
 ### 4. Firestore Database
 
@@ -80,29 +84,29 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /{document=**} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.auth.token.email == "관리자@gmail.com"
+                   && request.auth.token.email_verified == true;
     }
   }
 }
 ```
 
-### 5. Storage (파일 업로드)
+`관리자@gmail.com` 부분을 `.env`의 `VITE_ADMIN_EMAIL`과 동일한 주소로 바꾸세요.
 
-빌드 → Storage → 시작하기 → 규칙 탭에 아래를 붙여넣고 게시:
+규칙 의미: 누구나 자료를 볼 수는 있지만, 추가·수정·삭제는 **지정된 구글 계정 하나만** 가능합니다. 다른 사람이 브라우저 개발자 도구로 코드를 조작해도 이 규칙이 서버에서 막습니다.
 
-```
-rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /{allPaths=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-  }
-}
-```
+> Firebase Storage는 쓰지 않습니다 (유료 Blaze 요금제 필요). 파일은 아래 Vercel Blob에 저장됩니다.
 
-규칙 의미: 누구나 자료를 볼 수는 있지만, 추가·수정·삭제·업로드는 로그인한 관리자만 가능합니다.
+### 5. 파일 저장소 (Vercel Blob — 무료, 카드 불필요)
+
+Vercel 프로젝트 → **Storage** 탭 → **Create Database** → **Blob** 선택 → 이름 입력 후 생성 → 프로젝트에 연결(Connect). 이러면 `BLOB_READ_WRITE_TOKEN` 환경변수가 자동으로 등록됩니다.
+
+Hobby 플랜 기준 저장 1GB, 전송 10GB/월까지 무료입니다.
+
+관리자만 업로드할 수 있도록, `/api/upload`는 토큰을 발급하기 전에 요청자의 Firebase 로그인 정보를 구글 인증 서버에 조회해 `VITE_ADMIN_EMAIL`과 일치하는지 확인합니다.
+
+내 컴퓨터(`npm run dev`)에서도 업로드를 테스트하려면 Vercel의 Blob 저장소 화면에서 토큰을 복사해 `.env`의 `BLOB_READ_WRITE_TOKEN=`에 넣으세요. 없어도 '링크 등록' 방식은 그대로 동작합니다.
 
 ### 6. Vercel에 환경변수 등록 (배포용, 필수)
 
@@ -115,6 +119,7 @@ VITE_FIREBASE_PROJECT_ID
 VITE_FIREBASE_STORAGE_BUCKET
 VITE_FIREBASE_MESSAGING_SENDER_ID
 VITE_FIREBASE_APP_ID
+VITE_ADMIN_EMAIL
 ```
 
 등록만으로는 적용되지 않습니다. Deployments → 최신 배포 `⋯` → **Redeploy**를 눌러야 반영됩니다. 빠뜨리면 배포된 사이트에서 자료실이 로컬 임시 모드로 동작합니다.

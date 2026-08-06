@@ -15,7 +15,6 @@
  */
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
 import { getAuth } from "firebase/auth";
 
 const env = import.meta.env;
@@ -35,13 +34,11 @@ export const firebaseReady = Object.values(firebaseConfig).every(
 );
 
 let db = null;
-let storage = null;
 let auth = null;
 
 if (firebaseReady) {
   const app = initializeApp(firebaseConfig);
   db = getFirestore(app);
-  storage = getStorage(app);
   auth = getAuth(app);
 } else if (typeof window !== "undefined") {
   console.info(
@@ -49,4 +46,4 @@ if (firebaseReady) {
   );
 }
 
-export { db, storage, auth };
+export { db, auth };
