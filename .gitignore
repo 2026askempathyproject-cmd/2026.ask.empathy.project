@@ -16,3 +16,6 @@ dist/
 # 기타
 .DS_Store
 *.log
+
+# Vercel 등록용 임시 파일 (등록 후 삭제)
+vercel-env.txt

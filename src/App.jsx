@@ -90,6 +90,21 @@ const dataService = {
 /* ============================================================
    AI 기획자 — 서버 API 호출 (키는 서버에만 존재)
    ============================================================ */
+/** 업로드 실패 시 서버가 반환하는 실제 오류 메시지를 조회 (진단용) */
+async function probeUploadError() {
+  try {
+    const r = await fetch("/api/upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "blob.generate-client-token", payload: {} }),
+    });
+    const j = await r.json().catch(() => ({}));
+    return j?.error || null;
+  } catch {
+    return null;
+  }
+}
+
 async function generateProjectPlan({ grade, keyword }) {
   const res = await fetch("/api/generate", {
     method: "POST",
@@ -362,12 +377,13 @@ export default function App() {
         else await addDoc(collection(db, "materials"), payload);
         setMatForm(null);
       } catch (err) {
-        const msg = String(err?.message || err);
-        alert(
-          /BLOB_READ_WRITE_TOKEN|Blob 저장소/i.test(msg)
-            ? "파일 저장소가 아직 준비되지 않았습니다.\nVercel → Storage에서 Blob 저장소를 만들어 주세요. (지금은 '링크 등록'을 사용하세요)"
-            : "저장에 실패했습니다: " + msg
-        );
+        let msg = String(err?.message || err);
+        // 업로드 토큰 발급 실패 시, 서버가 알려주는 실제 원인을 다시 조회
+        if (/client token/i.test(msg)) {
+          const detail = await probeUploadError();
+          if (detail) msg = detail;
+        }
+        alert("저장에 실패했습니다.\n\n" + msg);
       } finally {
         setMatSaving(false);
       }
