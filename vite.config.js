@@ -2,7 +2,7 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { generatePlan } from "./api/_lib.mjs";
-import { handleUploadRequest } from "./api/_upload-lib.mjs";
+import { uploadFile } from "./api/_upload-lib.mjs";
 
 /** 요청 본문(JSON)을 모아서 반환 */
 const readJson = (req) =>
@@ -65,9 +65,11 @@ export default defineConfig(({ mode }) => {
             }
             try {
               const body = await readJson(req);
-              const result = await handleUploadRequest({
-                body,
-                request: req,
+              const result = await uploadFile({
+                idToken: body.idToken,
+                pathname: body.pathname,
+                dataBase64: body.data,
+                contentType: body.contentType,
                 token: env.BLOB_READ_WRITE_TOKEN,
                 firebaseApiKey: env.VITE_FIREBASE_API_KEY,
                 adminEmail: env.VITE_ADMIN_EMAIL,

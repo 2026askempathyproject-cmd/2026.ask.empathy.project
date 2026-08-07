@@ -4,7 +4,47 @@ import { firebaseReady, db, auth } from "./firebase.js";
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc,
 } from "firebase/firestore";
-import { upload as blobUpload } from "@vercel/blob/client";
+/** 업로드 가능한 최대 파일 크기 (서버 한도와 동일) */
+const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
+
+/** File → base64 문자열 */
+const fileToBase64 = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+    reader.onerror = () => reject(new Error("파일을 읽지 못했습니다."));
+    reader.readAsDataURL(file);
+  });
+
+/** 서버에 파일 업로드 요청 (60초 제한) */
+async function uploadFileToServer({ file, idToken, pathname }) {
+  const data = await fileToBase64(file);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60000);
+  try {
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        idToken,
+        pathname,
+        contentType: file.type || "application/octet-stream",
+        data,
+      }),
+      signal: controller.signal,
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || `업로드 실패 (${res.status})`);
+    return json;
+  } catch (e) {
+    if (e.name === "AbortError") {
+      throw new Error("업로드 시간이 초과되었습니다. 파일 크기를 줄이거나 '링크 등록'을 이용해 주세요.");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 import {
   onAuthStateChanged, signInWithPopup, signOut, GoogleAuthProvider,
 } from "firebase/auth";
@@ -90,21 +130,6 @@ const dataService = {
 /* ============================================================
    AI 기획자 — 서버 API 호출 (키는 서버에만 존재)
    ============================================================ */
-/** 업로드 실패 시 서버가 반환하는 실제 오류 메시지를 조회 (진단용) */
-async function probeUploadError() {
-  try {
-    const r = await fetch("/api/upload", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "blob.generate-client-token", payload: {} }),
-    });
-    const j = await r.json().catch(() => ({}));
-    return j?.error || null;
-  } catch {
-    return null;
-  }
-}
-
 async function generateProjectPlan({ grade, keyword }) {
   const res = await fetch("/api/generate", {
     method: "POST",
@@ -328,12 +353,17 @@ export default function App() {
 
   const onFilePick = (e) => {
     const f = e.target.files && e.target.files[0];
-    if (f)
-      setMatForm((prev) => ({
-        ...prev,
-        _file: f,
-        ...dataService.handleUpload(f),
-      }));
+    if (!f) return;
+    if (f.size > MAX_UPLOAD_BYTES) {
+      alert(
+        `파일이 너무 큽니다 (${(f.size / 1024 / 1024).toFixed(1)}MB).\n` +
+          `3MB 이하만 업로드할 수 있습니다.\n\n` +
+          `큰 파일은 '링크 등록' 탭을 이용해 주세요.`
+      );
+      e.target.value = "";
+      return;
+    }
+    setMatForm((prev) => ({ ...prev, _file: f, ...dataService.handleUpload(f) }));
   };
 
   const saveMaterial = async () => {
@@ -356,19 +386,14 @@ export default function App() {
       try {
         let fileFields = {};
         if (mode === "file" && matForm._file) {
-          // 브라우저 → Vercel Blob 직접 업로드 (서버가 관리자 확인 후 토큰 발급)
           const idToken = auth?.currentUser
             ? await auth.currentUser.getIdToken()
             : null;
-          const blob = await blobUpload(
-            `materials/${activeTab}/${matForm._file.name}`,
-            matForm._file,
-            {
-              access: "public",
-              handleUploadUrl: "/api/upload",
-              clientPayload: JSON.stringify({ idToken }),
-            }
-          );
+          const blob = await uploadFileToServer({
+            file: matForm._file,
+            idToken,
+            pathname: `materials/${activeTab}/${matForm._file.name}`,
+          });
           fileFields = { fileUrl: blob.url, filePath: blob.pathname };
         }
         const { id, _file, ...data } = matForm;
@@ -377,13 +402,7 @@ export default function App() {
         else await addDoc(collection(db, "materials"), payload);
         setMatForm(null);
       } catch (err) {
-        let msg = String(err?.message || err);
-        // 업로드 토큰 발급 실패 시, 서버가 알려주는 실제 원인을 다시 조회
-        if (/client token/i.test(msg)) {
-          const detail = await probeUploadError();
-          if (detail) msg = detail;
-        }
-        alert("저장에 실패했습니다.\n\n" + msg);
+        alert("저장에 실패했습니다.\n\n" + String(err?.message || err));
       } finally {
         setMatSaving(false);
       }
@@ -1036,7 +1055,7 @@ export default function App() {
                         )}
                       </label>
                       <p className="mt-1.5 text-xs" style={{ color: "#94A3B8" }}>
-                        PDF·한글·오피스 파일, 최대 50MB까지 올릴 수 있습니다.
+                        PDF·한글·오피스 파일, 3MB 이하. 더 큰 파일은 '링크 등록'을 이용하세요.
                       </p>
                     </>
                   )}

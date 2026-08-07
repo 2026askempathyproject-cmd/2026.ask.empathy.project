@@ -1,35 +1,22 @@
 /**
- * 파일 업로드 토큰 발급 (서버 전용)
+ * 자료실 파일 업로드 (서버 전용)
  *
- * 브라우저가 파일을 Vercel Blob에 직접 올릴 수 있도록 1회용 토큰을 발급합니다.
- * 발급 전에 요청자가 '관리자 구글 계정'인지 서버에서 검증하므로,
- * 아무나 업로드해서 저장 공간을 채우는 것을 막습니다.
+ * 브라우저가 파일을 서버로 보내면, 서버가 관리자인지 확인한 뒤
+ * Vercel Blob에 저장하고 공개 URL을 돌려줍니다.
  *
- * 검증 방식: 브라우저가 보낸 Firebase ID 토큰을 구글 인증 서버에 조회해
- * 실제 이메일을 확인합니다 (서비스 계정 키 불필요).
+ * 관리자 확인: 브라우저가 보낸 Firebase ID 토큰을 구글 인증 서버에 조회해
+ * 실제 이메일을 대조합니다 (서비스 계정 키 불필요).
  */
-import { handleUpload } from "@vercel/blob/client";
+import { put } from "@vercel/blob";
 
-const ALLOWED_TYPES = [
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "application/haansofthwp",
-  "application/x-hwp",
-  "image/png",
-  "image/jpeg",
-  "application/zip",
-  "application/octet-stream",
-];
-
-const MAX_BYTES = 50 * 1024 * 1024; // 50MB
+/** 서버리스 함수 요청 본문 한도(4.5MB)를 고려한 실제 파일 크기 상한 */
+export const MAX_FILE_BYTES = 3 * 1024 * 1024; // 3MB
 
 /** Firebase ID 토큰 → 이메일 확인 */
 async function verifyAdmin(idToken, { firebaseApiKey, adminEmail }) {
-  if (!adminEmail) return; // 관리자 이메일 미설정 시 검증 생략
-  if (!idToken) throw new Error("로그인이 필요합니다.");
-  if (!firebaseApiKey) throw new Error("서버에 Firebase 설정이 없습니다.");
+  if (!adminEmail) throw new Error("서버에 관리자 계정(VITE_ADMIN_EMAIL)이 설정되지 않았습니다.");
+  if (!idToken) throw new Error("로그인이 필요합니다. 관리자 계정으로 다시 로그인해 주세요.");
+  if (!firebaseApiKey) throw new Error("서버에 Firebase 설정(VITE_FIREBASE_API_KEY)이 없습니다.");
 
   const r = await fetch(
     `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseApiKey}`,
@@ -39,46 +26,50 @@ async function verifyAdmin(idToken, { firebaseApiKey, adminEmail }) {
       body: JSON.stringify({ idToken }),
     }
   );
-  if (!r.ok) throw new Error("로그인 정보를 확인하지 못했습니다.");
+  if (!r.ok) throw new Error("로그인 정보를 확인하지 못했습니다. 다시 로그인해 주세요.");
   const data = await r.json();
   const email = (data?.users?.[0]?.email || "").toLowerCase();
-  if (email !== adminEmail.toLowerCase()) {
-    throw new Error("관리자 계정이 아닙니다.");
-  }
+  if (email !== adminEmail.toLowerCase()) throw new Error("관리자 계정이 아닙니다.");
 }
 
-export async function handleUploadRequest({
-  body,
-  request,
+/**
+ * @param {object} p
+ * @param {string} p.idToken   Firebase ID 토큰
+ * @param {string} p.pathname  저장 경로 (예: materials/jagi/파일.pdf)
+ * @param {string} p.dataBase64 파일 내용 (base64)
+ * @param {string} [p.contentType]
+ */
+export async function uploadFile({
+  idToken,
+  pathname,
+  dataBase64,
+  contentType,
   token,
   firebaseApiKey,
   adminEmail,
 }) {
   if (!token) {
     throw new Error(
-      "BLOB_READ_WRITE_TOKEN이 없습니다. Vercel → Storage에서 Blob 저장소를 만들어 주세요."
+      "파일 저장소가 연결되지 않았습니다. Vercel → Storage에서 Blob 저장소를 연결해 주세요."
     );
   }
-  return handleUpload({
-    body,
-    request,
+  if (!pathname || !dataBase64) throw new Error("파일 정보가 올바르지 않습니다.");
+
+  await verifyAdmin(idToken, { firebaseApiKey, adminEmail });
+
+  const buffer = Buffer.from(dataBase64, "base64");
+  if (buffer.length > MAX_FILE_BYTES) {
+    throw new Error(
+      `파일이 너무 큽니다 (${(buffer.length / 1024 / 1024).toFixed(1)}MB). 3MB 이하만 업로드할 수 있습니다. 큰 파일은 '링크 등록'을 이용해 주세요.`
+    );
+  }
+
+  const blob = await put(pathname, buffer, {
+    access: "public",
     token,
-    onBeforeGenerateToken: async (pathname, clientPayload) => {
-      let idToken = null;
-      try {
-        idToken = JSON.parse(clientPayload || "{}").idToken;
-      } catch {
-        /* 무시 */
-      }
-      await verifyAdmin(idToken, { firebaseApiKey, adminEmail });
-      return {
-        allowedContentTypes: ALLOWED_TYPES,
-        maximumSizeInBytes: MAX_BYTES,
-        addRandomSuffix: true,
-      };
-    },
-    onUploadCompleted: async () => {
-      /* 업로드 완료 후 별도 처리 없음 (파일 정보는 Firestore에 저장) */
-    },
+    addRandomSuffix: true,
+    contentType: contentType || "application/octet-stream",
   });
+
+  return { url: blob.url, pathname: blob.pathname };
 }
