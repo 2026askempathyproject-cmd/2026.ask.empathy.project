@@ -182,6 +182,150 @@ const INITIAL_MATERIALS = {
 };
 
 /* ============================================================
+   프로젝트 4개 상세 (최종 보고서 연구과제 2 기준)
+   ============================================================ */
+const ASK_TAG = {
+  A: { label: "디지털 문해력", color: C.blue },
+  S: { label: "디지털 시민성", color: C.coral },
+  K: { label: "실천적 창의성", color: C.amber },
+};
+
+const PROJECTS = [
+  {
+    key: "jagi", no: "①", area: "자기", ch: "자", color: C.coral, icon: Heart,
+    title: "자기와 기술 연결하기", data: "Seed Data", hours: 12,
+    intent:
+      "자신에 대한 깊이 있는 탐구와 데이터화는 주체적인 자아 정체성 형성의 기반이 됩니다. 향후 SDGs 탐구를 위한 정서적·기술적 기초 단계로, 자신의 데이터를 직접 수집하고 피지컬 AI 로봇의 움직임으로 체화·공유하며 자기 인식을 확장하도록 구성했습니다.",
+    goal: "나의 내면 데이터를 분석하고, AI 로봇과 카드뉴스로 나를 주도적으로 표현할 수 있다.",
+    bigIdea: "자기를 이해하는 활동은 공동체와 함께 성장하는 건강한 사람의 밑바탕이 된다.",
+    question: "나를 표현하는 AI 로봇은 어떻게 만들까?",
+    tiers: [
+      { grade: "4학년", focus: "감정 데이터", desc: "감정 마인드맵 → 감정 데이터 해석 → 표정 인식 감정 로봇" },
+      { grade: "5학년", focus: "강점 데이터", desc: "강점 워드클라우드 → 우리 반 마음 설명 → AI 챗봇 대화 로봇" },
+    ],
+    stages: [
+      { ch: "공", label: "감으로 열기", act: "나의 데이터를 살펴보며 자기를 이해하고 표현하기", ask: ["A"], eval: "내면 데이터 차트 (포트폴리오 평가)", tools: "심스페이스" },
+      { ch: "감", label: "각으로 익히기", act: "나의 감정·강점을 보여주는 AI 로봇 만들기", ask: ["K"], eval: "로봇 프로토타입 (실기 평가)", tools: "엔트리 · 햄스터봇 · 미주" },
+      { ch: "문", label: "해로 짓기", act: "나의 AI 로봇을 소개하는 카드뉴스 만들기", ask: ["A", "S"], eval: "카드뉴스 산출물 (산출물 평가)", tools: "자작자작 · 캔바" },
+      { ch: "해", label: "결로 잇기", act: "나의 감정·강점 AI 로봇 공유하기", ask: ["S"], eval: "발표 및 공유 (관찰 평가)", tools: "패들렛" },
+    ],
+    standards: {
+      "3~4학년군": [
+        ["4국06-02", "매체를 활용하여 간단한 발표 자료를 만든다."],
+        ["4도01-01", "자신의 감정을 소중히 여기며 존중하는 태도를 바탕으로 내가 누구인가를 탐구한다."],
+        ["4도02-03", "공감의 태도가 필요한 이유를 이해하고 도덕적 상상력을 바탕으로 감정을 나누는 방법을 탐구하여 실천한다."],
+        ["4사01-01", "주변 여러 장소에서의 경험과 느낌을 다양한 방식으로 표현하고, 장소감을 나누며 서로 존중하는 태도를 지닌다."],
+      ],
+      "5~6학년군": [
+        ["6국01-05", "자료를 선별하여 핵심 정보를 중심으로 내용을 구성하고 매체를 활용하여 발표한다."],
+        ["6도02-03", "인간과 인공지능 로봇 간의 다양한 관계를 파악하고 도덕에 기반을 둔 관계 형성의 필요성을 탐구한다."],
+        ["6사03-01", "법의 의미와 역할을 이해하고, 헌법에 규정된 인권이 일상생활에서 구현되는 사례를 조사한다."],
+        ["6실04-06", "로봇의 융합 기술을 이해하고, 간단한 로봇을 만들어 코딩과 프로그램을 적용하여 동작시킨다."],
+      ],
+    },
+  },
+  {
+    key: "gisul", no: "②", area: "학교", ch: "기", color: C.amber, icon: School,
+    title: "기술과 주변 연결하기", data: "Growth Data", hours: 12,
+    intent:
+      "타인의 어려움에 공감하고 공동체의 문제를 발견하는 경험은 성숙한 시민으로 성장하기 위한 필수 과정입니다. 주변으로 시야를 확장해 학생들이 주도적으로 문제를 발굴하고 피지컬 AI로 해결 방안을 기획하며 일상 속 공존의 가치를 실천하도록 구성했습니다.",
+    goal: "우리 주변의 문제 상황에 공감하고, AI와 로봇을 활용해 해결할 수 있다.",
+    bigIdea: "공동체의 문제를 인식하고 해결책을 설계·공유하는 과정은 주도적인 민주 시민의 첫걸음이다.",
+    question: "우리 주변의 문제를 해결하는 AI 로봇은 어떻게 만들까?",
+    tiers: [
+      { grade: "4학년", focus: "우리 학급의 문제", desc: "학급 내에서 발견한 문제를 해결하는 로봇 설계" },
+      { grade: "5학년", focus: "우리 학교의 문제", desc: "학교 전체로 범위를 넓혀 공공의 문제 해결" },
+    ],
+    stages: [
+      { ch: "공", label: "감으로 열기", act: "우리 학급·학교의 문제 발견하기", ask: ["A"], eval: "문제 발견 보고서 (보고서 평가)", tools: "멘티미터 · 패들렛" },
+      { ch: "감", label: "각으로 익히기", act: "문제를 해결하는 AI 로봇 만들기 (센서 기반 감지·경보)", ask: ["S", "K"], eval: "로봇 구동 (실기 평가)", tools: "엔트리 · 햄스터봇" },
+      { ch: "문", label: "해로 짓기", act: "AI 로봇 사용 설명서 만들기", ask: ["A", "K"], eval: "투닝 만화 산출물 (산출물 평가)", tools: "투닝" },
+      { ch: "해", label: "결로 잇기", act: "AI 로봇 사용 설명서 공유하기", ask: ["S"], eval: "발표 및 공유 (관찰 평가)", tools: "패들렛" },
+    ],
+    standards: {
+      "3~4학년군": [
+        ["4국01-06", "주제에 적절한 의견과 이유를 제시하고 서로의 생각을 교환하며 토의한다."],
+        ["4국06-02", "매체를 활용하여 간단한 발표 자료를 만든다."],
+        ["4도01-04", "다른 사람의 관점을 수용할 수 있는지를 도덕적으로 검토하고 도덕 규범을 내면화한다."],
+        ["4사01-01", "주변 여러 장소에서의 경험과 느낌을 다양한 방식으로 표현하고 서로 존중하는 태도를 지닌다."],
+      ],
+      "5~6학년군": [
+        ["6국01-05", "자료를 선별하여 핵심 정보를 중심으로 내용을 구성하고 매체를 활용하여 발표한다."],
+        ["6도02-03", "인간과 인공지능 로봇 간의 관계를 파악하고 도덕에 기반을 둔 관계 형성의 필요성을 탐구한다."],
+        ["6사03-01", "법의 의미와 역할을 이해하고, 인권이 일상생활에서 구현되는 사례를 조사한다."],
+        ["6실05-03", "실생활의 문제를 해결하는 프로그램을 협력하여 작성하고, 산출물을 타인과 공유한다."],
+      ],
+    },
+  },
+  {
+    key: "jubyeon", no: "③", area: "세상", ch: "주", color: C.emerald, icon: Earth,
+    title: "주변과 세상 연결하기", data: "Growth Data", hours: 12,
+    intent:
+      "주변의 문제를 지속가능발전목표(SDGs)와 연결하는 것은 세계 시민의 핵심 소양입니다. 추상적인 사회 문제를 데이터와 피지컬 AI로 구체화하고, 이를 세상을 변화시키는 행동 촉구 캠페인으로 확산하여 실천적 시민성을 기르도록 구성했습니다.",
+    goal: "SDGs에 공감하고, 주변의 문제를 AI와 로봇으로 해결하는 캠페인을 할 수 있다.",
+    bigIdea: "데이터와 기술은 지속 가능한 삶을 위한 일상 속 친환경적 실천을 도울 수 있다.",
+    question: "SDGs를 위한 AI 로봇은 어떻게 만들까?",
+    tiers: [
+      { grade: "4학년", focus: "가정 내 실천", desc: "가정에서의 SDGs 경험을 로봇으로 구현" },
+      { grade: "5학년", focus: "지역사회 연대", desc: "지역사회로 확장해 캠페인으로 확산" },
+    ],
+    stages: [
+      { ch: "공", label: "감으로 열기", act: "가정·지역사회에서의 SDGs 경험 표현하기", ask: ["A"], eval: "가상 세계 산출물 (산출물 평가)", tools: "GreenQuest · 심스페이스" },
+      { ch: "감", label: "각으로 익히기", act: "디지털 트윈 설계 후 Sim-to-Real 자율주행 미션", ask: ["S", "K"], eval: "로봇 구동 (실기 평가)", tools: "엔트리 · 햄스터봇" },
+      { ch: "문", label: "해로 짓기", act: "SDGs AI 로봇 발표 자료 만들기", ask: ["A", "K"], eval: "캔바 영상 산출물 (산출물 평가)", tools: "캔바" },
+      { ch: "해", label: "결로 잇기", act: "SDGs를 위한 AI 로봇 캠페인하기", ask: ["S"], eval: "발표 및 공유 (관찰 평가)", tools: "패들렛" },
+    ],
+    standards: {
+      "3~4학년군": [
+        ["4국06-03", "매체 소통 윤리를 고려하여 매체 자료를 활용하고 공유한다."],
+        ["4도03-02", "디지털 사회에서 발생하는 문제를 살펴보고 해결 방안을 탐구하여 정보통신 윤리 민감성을 기른다."],
+        ["4도04-02", "인간과 자연이 함께 살아야 하는 이유를 이해하고 공생을 위한 실천 계획을 세운다."],
+        ["4사03-01", "최근 사회 변화의 양상과 특징을 파악하고, 생활 모습의 변화를 탐색한다."],
+      ],
+      "5~6학년군": [
+        ["6국01-05", "선별한 자료에서 핵심 정보를 중심으로 내용을 구성하고 적합한 매체를 활용하여 발표한다."],
+        ["6도04-02", "지속가능한 삶의 의미를 탐구하고 미래 세대에 대한 책임을 강화하여 실천 방안을 찾는다."],
+        ["6사12-02", "지구촌을 위협하는 다양한 문제들을 파악하고, 지속 가능한 미래를 위한 해결 방안을 탐색한다."],
+        ["6실04-03", "제작한 발표 자료를 사이버 공간에 공유하고, 건전한 정보기기의 활용을 실천한다."],
+      ],
+    },
+  },
+  {
+    key: "mirae", no: "④", area: "미래", ch: "도", color: C.blue, icon: Compass,
+    title: "세상도 자기와 연결하기", data: "Harvest Data", hours: 12,
+    intent:
+      "인간과 AI가 공존하는 미래에는 기술을 주도하는 윤리적 통제력이 요구됩니다. 그동안의 탐구 데이터를 종합해 미래 AI 로봇을 기획하고, 이를 디지털 포트폴리오로 출판해 미래 세대에 제안함으로써 주도적으로 진로를 개척하는 주권적 설계자로 성장하도록 구성했습니다.",
+    goal: "미래 사회와 AI 로봇의 역할을 성찰하고, 프로젝트 전 과정을 디지털 포트폴리오로 출판할 수 있다.",
+    bigIdea: "자신의 데이터를 연결한 미래 AI 로봇을 창작하고 제안하며 미래 설계자로 성장할 수 있다.",
+    question: "나의 데이터를 연결한 미래 AI 로봇은 어떻게 만들까?",
+    tiers: [
+      { grade: "4학년", focus: "반려 로봇", desc: "인간적 교감을 나누는 미래 반려 로봇 기획" },
+      { grade: "5학년", focus: "직업 로봇", desc: "사회적 기여를 하는 나의 직업 로봇 기획" },
+    ],
+    stages: [
+      { ch: "공", label: "감으로 열기", act: "내가 꿈꾸는 미래·직업과 SDGs 비교하기", ask: ["A"], eval: "챗봇 대화 내용 (관찰 평가)", tools: "미주 · 심스페이스" },
+      { ch: "감", label: "각으로 익히기", act: "SDGs를 위한 반려·직업 AI 로봇 만들기", ask: ["K"], eval: "로봇 구동 (실기 평가)", tools: "엔트리 · 햄스터봇" },
+      { ch: "문", label: "해로 짓기", act: "AI 로봇을 평가하는 글 쓰기", ask: ["A", "S"], eval: "기술 평가 에세이 (서·논술형 평가)", tools: "자작자작" },
+      { ch: "해", label: "결로 잇기", act: "미래 세대·기업·정부에 디지털 포트폴리오 제안하기", ask: ["A", "S"], eval: "발표 및 공유 (관찰 평가)", tools: "북크리에이터" },
+    ],
+    standards: {
+      "3~4학년군": [
+        ["4국03-05", "자신의 쓰기 과정을 점검하며 쓰기에 자신감을 갖는다."],
+        ["4국06-02", "다양한 매체를 활용하여 간단한 발표 자료를 짜임새 있게 만들 수 있다."],
+        ["4도01-01", "자신의 감정을 소중히 여기며 존중하는 태도를 바탕으로 내가 누구인가를 탐구한다."],
+        ["4사03-01", "최근 사회 변화의 양상과 특징을 파악하고, 생활 모습의 변화를 탐색한다."],
+      ],
+      "5~6학년군": [
+        ["6국05-05", "일상생활에서의 경험을 시, 소설, 극, 수필 등의 적절한 갈래로 창의적으로 표현할 수 있다."],
+        ["6도01-01", "자주적인 삶에 대한 이해를 바탕으로 생활 계획을 세우고 실천하여 주체적인 삶의 태도를 가진다."],
+        ["6사12-02", "지구촌을 위협하는 다양한 문제들을 파악하고, 지속 가능한 미래를 위한 해결 방안을 탐색한다."],
+        ["6실01-07", "직업의 필요성을 이해하고 적성, 흥미, 성격에 따라 진로 발달 계획을 세우고 주도적으로 탐색한다."],
+      ],
+    },
+  },
+];
+
+/* ============================================================
    연구 결과 (최종 보고서 Ⅳ장 기준)
    * p<.05  ** p<.01  n.s. 유의하지 않음 · d = Cohen's dz
    ============================================================ */
@@ -364,6 +508,7 @@ export default function App() {
   /* ---------- Materials CRUD ---------- */
   const [materials, setMaterials] = useState(INITIAL_MATERIALS);
   const [activeTab, setActiveTab] = useState("jagi");
+  const [activeProject, setActiveProject] = useState("jagi");
   const [matForm, setMatForm] = useState(null);
   const [matSaving, setMatSaving] = useState(false);
   const fileInputRef = useRef(null);
@@ -525,6 +670,7 @@ export default function App() {
   const navItems = [
     ["ask", "ASK 역량"],
     ["cycle", "공감문해 모형"],
+    ["projects", "프로젝트"],
     ["results", "연구 결과"],
     ["apps", "나의 웹앱"],
     ["materials", "자료실"],
@@ -812,6 +958,156 @@ export default function App() {
               </p>
             </div>
           </FadeIn>
+        </div>
+      </section>
+
+      {/* ================= 프로젝트 상세 ================= */}
+      <section id="projects" className="py-20 px-4">
+        <div className="max-w-6xl mx-auto">
+          <FadeIn>
+            <SectionTitle
+              badge="PROJECTS"
+              title="네 개의 프로젝트"
+              sub="자기 → 학교 → 세상 → 미래로 확장되는 나선형 교육과정. 같은 주제를 4학년과 5학년의 발달 수준에 맞춰 위계화했습니다."
+              color={C.amber}
+            />
+          </FadeIn>
+
+          {/* 프로젝트 선택 */}
+          <FadeIn>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+              {PROJECTS.map((p) => {
+                const on = activeProject === p.key;
+                return (
+                  <button
+                    key={p.key}
+                    onClick={() => setActiveProject(p.key)}
+                    className="rounded-2xl p-4 text-left transition-all hover:-translate-y-1"
+                    style={on ? { background: p.color, boxShadow: `0 10px 24px ${p.color}55` } : glassSoft}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-black" style={{ color: on ? "#fff" : p.color }}>
+                        {p.no} {p.area}
+                      </span>
+                      <p.icon size={16} style={{ color: on ? "#fff" : p.color }} />
+                    </div>
+                    <p className="text-sm font-extrabold leading-tight" style={{ color: on ? "#fff" : C.ink }}>
+                      {p.title}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </FadeIn>
+
+          {PROJECTS.filter((p) => p.key === activeProject).map((p) => (
+            <div key={p.key} className="rounded-3xl p-6 md:p-8" style={glass}>
+              {/* 탐구 질문 */}
+              <div className="rounded-2xl p-6 mb-6 text-center" style={{ background: `${p.color}0D`, border: `1px solid ${p.color}22` }}>
+                <p className="text-xs font-bold tracking-widest mb-2" style={{ color: p.color }}>탐구 질문</p>
+                <h3 className="text-xl md:text-2xl font-black leading-snug">{p.question}</h3>
+              </div>
+
+              {/* 목표 · 차시 · 핵심 아이디어 */}
+              <div className="grid md:grid-cols-3 gap-3 mb-6">
+                <div className="rounded-2xl p-4 md:col-span-2" style={{ background: "#F8FAFC" }}>
+                  <p className="text-xs font-bold mb-1" style={{ color: p.color }}>학습 목표</p>
+                  <p className="text-sm font-semibold leading-relaxed">{p.goal}</p>
+                </div>
+                <div className="rounded-2xl p-4 flex items-center justify-center gap-4" style={{ background: "#F8FAFC" }}>
+                  <div className="text-center">
+                    <p className="text-2xl font-black" style={{ color: p.color }}>{p.hours}</p>
+                    <p className="text-xs font-semibold" style={{ color: C.gray }}>차시</p>
+                  </div>
+                  <div className="w-px h-10" style={{ background: "#E2E8F0" }} />
+                  <div className="text-center">
+                    <p className="text-sm font-black" style={{ color: p.color }}>{p.data}</p>
+                    <p className="text-xs font-semibold" style={{ color: C.gray }}>데이터 유형</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl p-4 mb-6" style={{ background: "#F8FAFC" }}>
+                <p className="text-xs font-bold mb-1" style={{ color: p.color }}>핵심 아이디어</p>
+                <p className="text-sm leading-relaxed">{p.bigIdea}</p>
+              </div>
+
+              <p className="text-sm leading-relaxed mb-8" style={{ color: C.gray }}>{p.intent}</p>
+
+              {/* 학년별 위계화 */}
+              <h4 className="font-extrabold mb-3 flex items-center gap-2">
+                <Layers size={17} style={{ color: p.color }} /> 학년별 위계화
+              </h4>
+              <div className="grid md:grid-cols-2 gap-3 mb-8">
+                {p.tiers.map((t) => (
+                  <div key={t.grade} className="rounded-2xl p-5" style={{ background: "#fff", border: `1.5px solid ${p.color}22` }}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-2.5 py-1 rounded-full text-xs font-black text-white" style={{ background: p.color }}>
+                        {t.grade}
+                      </span>
+                      <span className="font-extrabold text-sm">{t.focus}</span>
+                    </div>
+                    <p className="text-sm leading-relaxed" style={{ color: C.gray }}>{t.desc}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* 4단계 활동 */}
+              <h4 className="font-extrabold mb-3 flex items-center gap-2">
+                <RefreshCw size={17} style={{ color: p.color }} /> 공·감·문·해 4단계 활동
+              </h4>
+              <div className="grid md:grid-cols-4 gap-3 mb-8">
+                {p.stages.map((s, i) => (
+                  <div key={s.ch} className="rounded-2xl p-4 flex flex-col" style={{ background: "#fff", border: "1px solid #F1F5F9" }}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-black" style={{ background: STAGE_META[i].color }}>
+                        {s.ch}
+                      </span>
+                      <span className="text-xs font-bold" style={{ color: STAGE_META[i].color }}>{s.label}</span>
+                    </div>
+                    <p className="text-sm font-semibold leading-snug mb-3 flex-1">{s.act}</p>
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {s.ask.map((a) => (
+                        <span key={a} className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ background: `${ASK_TAG[a].color}12`, color: ASK_TAG[a].color }}>
+                          {a} {ASK_TAG[a].label}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-[11px] flex items-start gap-1 mb-1" style={{ color: C.gray }}>
+                      <Bot size={11} className="mt-0.5 shrink-0" /> {s.tools}
+                    </p>
+                    <p className="text-[11px] flex items-start gap-1" style={{ color: C.gray }}>
+                      <ClipboardCheck size={11} className="mt-0.5 shrink-0" /> {s.eval}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* 성취기준 (펼치기) */}
+              <details className="rounded-2xl overflow-hidden" style={{ border: "1px solid #E2E8F0" }}>
+                <summary className="px-5 py-3.5 cursor-pointer font-extrabold text-sm flex items-center gap-2 select-none" style={{ background: "#F8FAFC" }}>
+                  <BadgeCheck size={16} style={{ color: p.color }} />
+                  2022 개정 교육과정 성취기준 보기
+                </summary>
+                <div className="p-5 grid md:grid-cols-2 gap-5" style={{ background: "#fff" }}>
+                  {Object.entries(p.standards).map(([band, list]) => (
+                    <div key={band}>
+                      <p className="text-xs font-black mb-2 px-2 py-1 rounded-md inline-block" style={{ background: `${p.color}12`, color: p.color }}>
+                        {band}
+                      </p>
+                      <ul className="flex flex-col gap-2">
+                        {list.map(([code, desc]) => (
+                          <li key={code} className="text-xs leading-relaxed" style={{ color: C.ink }}>
+                            <b style={{ color: p.color }}>[{code}]</b> {desc}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            </div>
+          ))}
         </div>
       </section>
 
