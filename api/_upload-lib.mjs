@@ -64,12 +64,25 @@ export async function uploadFile({
     );
   }
 
-  const blob = await put(pathname, buffer, {
-    access: "public",
-    token,
-    addRandomSuffix: true,
-    contentType: contentType || "application/octet-stream",
-  });
+  let blob;
+  try {
+    blob = await put(pathname, buffer, {
+      access: "public",
+      token,
+      addRandomSuffix: true,
+      contentType: contentType || "application/octet-stream",
+    });
+  } catch (e) {
+    const msg = String(e?.message || e);
+    if (/private store|private access/i.test(msg)) {
+      throw new Error(
+        "Blob 저장소가 '비공개(Private)'로 설정되어 있어 자료를 올릴 수 없습니다.\n" +
+          "Vercel → Storage에서 '공개(Public)' 저장소를 만들어 연결한 뒤, " +
+          "BLOB_READ_WRITE_TOKEN 값을 새 토큰으로 교체하고 Redeploy 해주세요."
+      );
+    }
+    throw new Error("파일 저장 중 오류가 발생했습니다: " + msg);
+  }
 
   return { url: blob.url, pathname: blob.pathname };
 }

@@ -181,6 +181,64 @@ const INITIAL_MATERIALS = {
   ],
 };
 
+/* ============================================================
+   연구 결과 (최종 보고서 Ⅳ장 기준)
+   * p<.05  ** p<.01  n.s. 유의하지 않음 · d = Cohen's dz
+   ============================================================ */
+const RESULT_ROWS = [
+  {
+    key: "A", name: "디지털 문해력", en: "Analysis", color: C.blue, icon: BookOpen,
+    sub: "지식정보처리 · 심미적 감성",
+    g4: { t: "-3.59", sig: "**", d: 0.70, delta: ["▲0.44", "▲0.40"] },
+    g5: { t: "-2.51", sig: "*", d: 0.52, delta: ["▲0.22", "▲0.28"] },
+  },
+  {
+    key: "S", name: "디지털 시민성", en: "Sharing", color: C.coral, icon: Share2,
+    sub: "협력적 소통 · 공동체",
+    g4: { t: "-2.68", sig: "*", d: 0.53, delta: ["▲0.41", "▲0.33"] },
+    g5: { t: "-3.30", sig: "**", d: 0.69, delta: ["▲0.43", "▲0.36"] },
+  },
+  {
+    key: "K", name: "실천적 창의성", en: "Knowhow", color: C.amber, icon: Lightbulb,
+    sub: "자기관리 · 창의적 사고",
+    g4: { t: "-0.69", sig: "n.s.", d: 0.14, delta: ["▲0.12", "▲0.05"] },
+    g5: { t: "-2.69", sig: "*", d: 0.56, delta: ["▲0.29", "▲0.62"] },
+  },
+];
+
+const QUAL_RESULTS = [
+  {
+    key: "A", color: C.blue, icon: BookOpen, name: "디지털 문해력",
+    text: "주변 데이터를 다각도로 분석하여 해결책을 디지털 매체로 표현하는 디지털 문해력(A)이 향상됨.",
+  },
+  {
+    key: "S", color: C.coral, icon: Share2, name: "디지털 시민성",
+    text: "공동체 문제에 관심을 가지고 협력하며 사회적 가치를 창출하는 디지털 시민성(S)이 향상됨.",
+  },
+  {
+    key: "K", color: C.amber, icon: Lightbulb, name: "실천적 창의성",
+    text: "창의적인 아이디어를 실제 세계에 구현하고 이를 일상에서 주도적으로 확산하는 실천적 창의성(K)이 길러짐.",
+  },
+];
+
+const INSIGHTS = [
+  {
+    icon: BookOpen, color: C.blue,
+    title: "단순 매체 소비자에서 주도적 데이터 생성자로",
+    text: "기술을 감각적으로 소비하던 학생들이 디지털 문해력을 발휘해 데이터를 비판적으로 수집·분석·재구성하는 주체적 생산자로 성장했습니다.",
+  },
+  {
+    icon: Globe2, color: C.coral,
+    title: "교실 내 상호작용에서 글로컬(Glocal) 연대로",
+    text: "개인의 내면 데이터(Seed Data)가 학교를 거쳐 SDGs를 해결하는 실천(Harvest Data)으로 환원되며, 소버린 AI 교육이 지향하는 연대 의식이 체화되었습니다.",
+  },
+  {
+    icon: RefreshCw, color: C.amber,
+    title: "Sim-to-Real 기반의 실천적 창의성 발현",
+    text: "화면 속 AI를 물리적 공간으로 끌어내 직접 통제하고 실패를 수정하는 경험을 통해 삶의 문제를 능동적으로 해결하는 힘이 자랐습니다.",
+  },
+];
+
 const TYPE_COLORS = {
   "요약본": { bg: "#EFF6FF", text: C.blue },
   "보고서": { bg: "#FFF1F2", text: C.coral },
@@ -467,6 +525,7 @@ export default function App() {
   const navItems = [
     ["ask", "ASK 역량"],
     ["cycle", "공감문해 모형"],
+    ["results", "연구 결과"],
     ["apps", "나의 웹앱"],
     ["materials", "자료실"],
     ["generator", "AI 기획자"],
@@ -628,16 +687,17 @@ export default function App() {
           <FadeIn delay={0.5}>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mt-16 max-w-4xl mx-auto">
               {[
-                ["▲0.44", "지식정보처리 성장", C.blue],
-                ["▲0.41", "협력적 소통 성장", C.coral],
-                ["▲0.62", "창의적 사고 성장", C.amber],
-                ["p<.001", "통계적 유의성 검증", C.emerald],
-              ].map(([num, label, color]) => (
+                ["d=0.70", "디지털 문해력 효과크기", "4학년 · p<.01", C.blue],
+                ["d=0.69", "디지털 시민성 효과크기", "5학년 · p<.01", C.coral],
+                ["▲0.62", "창의적 사고 상승폭", "5학년 · 전 항목 최고", C.amber],
+                ["49명", "연구 대상 학생", "4학년 26 · 5학년 23", C.emerald],
+              ].map(([num, label, sub, color]) => (
                 <div key={label} className="rounded-2xl p-4 text-center" style={glass}>
                   <div className="flex items-center justify-center gap-1 text-xl md:text-2xl font-black" style={{ color }}>
                     <TrendingUp size={18} /> {num}
                   </div>
                   <p className="text-xs mt-1 font-semibold" style={{ color: C.gray }}>{label}</p>
+                  <p className="text-[11px] mt-0.5" style={{ color: "#94A3B8" }}>{sub}</p>
                 </div>
               ))}
             </div>
@@ -751,6 +811,141 @@ export default function App() {
                 <b style={{ color: C.ink }}>나선형 선순환 구조</b>로 설계되었습니다.
               </p>
             </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ================= 연구 결과 ================= */}
+      <section id="results" className="py-20 px-4">
+        <div className="max-w-6xl mx-auto">
+          <FadeIn>
+            <SectionTitle
+              badge="RESEARCH RESULTS"
+              title="연구 결과"
+              sub="초등 4학년 26명 · 5학년 23명을 대상으로 사전(2026.3)–사후(2026.7) 대응표본 t검정을 실시했습니다."
+              color={C.emerald}
+            />
+          </FadeIn>
+
+          {/* 학년별 역량 비교 카드 */}
+          <div className="grid md:grid-cols-3 gap-6 mb-6">
+            {RESULT_ROWS.map((r, i) => (
+              <FadeIn key={r.key} delay={i * 0.1}>
+                <div className="rounded-3xl p-6 h-full" style={glass}>
+                  <div className="flex items-center gap-3 mb-1">
+                    <span className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ background: `${r.color}14` }}>
+                      <r.icon size={21} style={{ color: r.color }} />
+                    </span>
+                    <div>
+                      <p className="text-xs font-bold tracking-widest" style={{ color: r.color }}>
+                        {r.key} · {r.en.toUpperCase()}
+                      </p>
+                      <h3 className="text-lg font-extrabold leading-tight">{r.name}</h3>
+                    </div>
+                  </div>
+                  <p className="text-xs mb-4" style={{ color: "#94A3B8" }}>{r.sub}</p>
+
+                  {[
+                    ["4학년", r.g4],
+                    ["5학년", r.g5],
+                  ].map(([grade, g]) => {
+                    const ns = g.sig === "n.s.";
+                    const pct = Math.min(100, (g.d / 0.8) * 100); // 0.8 = 큰 효과크기 기준
+                    return (
+                      <div key={grade} className="mb-3 last:mb-0">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs font-bold" style={{ color: C.ink }}>{grade}</span>
+                          <span className="text-xs font-semibold" style={{ color: ns ? "#94A3B8" : r.color }}>
+                            t={g.t}
+                            <sup>{g.sig === "n.s." ? "" : g.sig}</sup>
+                            {ns && <span className="ml-1">n.s.</span>}
+                            <span className="ml-1.5" style={{ color: C.gray }}>d={g.d.toFixed(2)}</span>
+                          </span>
+                        </div>
+                        {/* 효과크기 막대 */}
+                        <div className="h-2 rounded-full overflow-hidden" style={{ background: "#F1F5F9" }}>
+                          <div
+                            className="h-full rounded-full transition-all duration-700"
+                            style={{ width: `${pct}%`, background: ns ? "#CBD5E1" : r.color }}
+                          />
+                        </div>
+                        <div className="flex gap-2 mt-1.5">
+                          {g.delta.map((d, j) => (
+                            <span key={j} className="text-[11px] font-semibold px-1.5 py-0.5 rounded" style={{ background: `${ns ? "#94A3B8" : r.color}10`, color: ns ? "#94A3B8" : r.color }}>
+                              {d}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+
+          <FadeIn delay={0.2}>
+            <div className="rounded-2xl p-5 mb-10 flex flex-col md:flex-row md:items-center gap-3 justify-between" style={glassSoft}>
+              <p className="text-sm font-semibold leading-relaxed" style={{ color: C.gray }}>
+                사전–사후 평균이 <b style={{ color: C.ink }}>전 영역에서 상승</b>했으며, 4학년은 디지털 문해력·디지털 시민성에서,
+                5학년은 <b style={{ color: C.ink }}>세 역량 모두</b>에서 통계적으로 유의미한 향상이 나타났습니다.
+              </p>
+              <p className="text-xs shrink-0" style={{ color: "#94A3B8" }}>
+                * p&lt;.05 &nbsp; ** p&lt;.01 &nbsp; n.s. 유의하지 않음 &nbsp;·&nbsp; d = Cohen's d<sub>z</sub>
+              </p>
+            </div>
+          </FadeIn>
+
+          {/* 분석 및 시사점 */}
+          <FadeIn delay={0.1}>
+            <h3 className="text-xl font-extrabold mb-5 flex items-center gap-2">
+              <Sparkles size={19} style={{ color: C.emerald }} /> 분석 및 시사점
+            </h3>
+          </FadeIn>
+          <div className="grid md:grid-cols-3 gap-5 mb-10">
+            {INSIGHTS.map((s, i) => (
+              <FadeIn key={s.title} delay={i * 0.1}>
+                <div className="rounded-3xl p-6 h-full" style={glass}>
+                  <span className="w-11 h-11 rounded-2xl flex items-center justify-center mb-3" style={{ background: `${s.color}14` }}>
+                    <s.icon size={20} style={{ color: s.color }} />
+                  </span>
+                  <h4 className="font-extrabold text-base mb-2 leading-snug">{s.title}</h4>
+                  <p className="text-sm leading-relaxed" style={{ color: C.gray }}>{s.text}</p>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+
+          {/* 질적 검증 */}
+          <FadeIn delay={0.1}>
+            <h3 className="text-xl font-extrabold mb-5 flex items-center gap-2">
+              <ClipboardCheck size={19} style={{ color: C.blue }} /> 질적 검증 결과
+            </h3>
+          </FadeIn>
+          <div className="flex flex-col gap-3">
+            {QUAL_RESULTS.map((q, i) => (
+              <FadeIn key={q.key} delay={i * 0.08} y={20}>
+                <div
+                  className="flex items-start gap-4 rounded-2xl px-5 py-4"
+                  style={{ background: "rgba(255,255,255,0.85)", border: `1px solid ${q.color}22` }}
+                >
+                  <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${q.color}12` }}>
+                    <q.icon size={18} style={{ color: q.color }} />
+                  </span>
+                  <div>
+                    <p className="text-xs font-bold mb-0.5" style={{ color: q.color }}>{q.name}</p>
+                    <p className="text-sm leading-relaxed" style={{ color: C.ink }}>{q.text}</p>
+                  </div>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+
+          <FadeIn delay={0.2}>
+            <p className="text-xs text-center mt-6" style={{ color: "#94A3B8" }}>
+              검증 도구 · 디지털 리터러시 수준측정 연구(KERIS, 2026), 초등학생 사회정서역량 측정도구(2025),
+              자기주도학습 능력척도(2023) · 5단계 리커트 척도
+            </p>
           </FadeIn>
         </div>
       </section>
