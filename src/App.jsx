@@ -214,6 +214,63 @@ const INITIAL_MATERIALS = {
 };
 
 /* ============================================================
+   학생 산출물 (최종 보고서 부록 Ⅲ. 프로젝트 교수·학습 자료 기준)
+   g: 4 | 5 | "45"(공동)
+   ============================================================ */
+const OUTPUTS = {
+  jagi: [
+    { name: "감정 마인드맵", g: "4" },
+    { name: "강점 마인드맵", g: "5" },
+    { name: "감정 로봇 알고리즘", g: "4" },
+    { name: "표정 인식 감정 로봇", g: "4" },
+    { name: "강점 로봇 알고리즘", g: "5" },
+    { name: "그림 그리기 강점 로봇", g: "5" },
+    { name: "미주 AI 챗봇 상호작용", g: "5" },
+    { name: "감정 로봇 카드 뉴스", g: "4" },
+    { name: "강점 로봇 카드 뉴스", g: "5" },
+  ],
+  gisul: [
+    { name: "우리 학교 문제 상황", g: "5" },
+    { name: "학교 문제 현장 조사", g: "5" },
+    { name: "보이스가이드봇 알고리즘", g: "5" },
+    { name: "장애인 안내봇 김로봇", g: "5" },
+    { name: "문제 해결 이미지 생성", g: "4" },
+    { name: "문제 해결 이미지 생성", g: "5" },
+    { name: "문제 해결 웹툰 만들기", g: "4" },
+    { name: "문제 해결 웹툰 만들기", g: "5" },
+    { name: "문제 해결 웹툰 공유하기", g: "45" },
+  ],
+  jubyeon: [
+    { name: "우리 지역사회 문제 매핑", g: "5" },
+    { name: "문제 해결 메타버스 제작", g: "4" },
+    { name: "문제 해결 메타버스 제작", g: "5" },
+    { name: "우리 가정 분리배출봇", g: "4" },
+    { name: "우리 지역 환경 지킴이봇", g: "5" },
+    { name: "장애인 이동 보조봇", g: "5" },
+    { name: "집밥봇 캠페인 영상", g: "4" },
+    { name: "SDG 13번 캠페인 영상", g: "5" },
+    { name: "학교 뉴스 제작 및 확산", g: "45" },
+  ],
+  mirae: [
+    { name: "나의 미래와 SDGs 연결", g: "4" },
+    { name: "나의 미래와 SDGs 연결", g: "5" },
+    { name: "AI 탐정 로봇 표현", g: "5" },
+    { name: "AI 의사 로봇 표현", g: "5" },
+    { name: "미래 반려 로봇 알고리즘", g: "4" },
+    { name: "AI 수의사 로봇 알고리즘", g: "5" },
+    { name: "미래 반려 로봇 구동", g: "4" },
+    { name: "미래 직업 로봇 구동", g: "5" },
+    { name: "공감문해 도서관", g: "45" },
+  ],
+};
+
+const GRADE_BADGE = {
+  "4": { label: "4학년", color: C.amber },
+  "5": { label: "5학년", color: C.blue },
+  "45": { label: "4·5학년", color: C.emerald },
+};
+
+/* ============================================================
    AI·에듀테크 (최종 보고서 '연구과제 1 – 다. AI·에듀테크 선정' 기준)
    ❶ 자기 ❷ 학교 ❸ 세상 ❹ 미래
    ============================================================ */
@@ -460,10 +517,10 @@ const PROJECTS = [
       { grade: "5학년", focus: "강점 데이터", desc: "강점 워드클라우드 → 우리 반 마음 설명 → AI 챗봇 대화 로봇" },
     ],
     stages: [
-      { ch: "공", label: "감으로 열기", act: "나의 데이터를 살펴보며 자기를 이해하고 표현하기", ask: ["A"], eval: "내면 데이터 차트 (포트폴리오 평가)", tools: "심스페이스" },
-      { ch: "감", label: "각으로 익히기", act: "나의 감정·강점을 보여주는 AI 로봇 만들기", ask: ["K"], eval: "로봇 프로토타입 (실기 평가)", tools: "엔트리 · 햄스터봇 · 미주" },
-      { ch: "문", label: "해로 짓기", act: "나의 AI 로봇을 소개하는 카드뉴스 만들기", ask: ["A", "S"], eval: "카드뉴스 산출물 (산출물 평가)", tools: "자작자작 · 캔바" },
-      { ch: "해", label: "결로 잇기", act: "나의 감정·강점 AI 로봇 공유하기", ask: ["S"], eval: "발표 및 공유 (관찰 평가)", tools: "패들렛" },
+      { ch: "공", label: "감으로 열기", act: "나의 데이터를 살펴보며 자기를 이해하고 표현하기", ask: ["A"], eval: "내면 데이터 차트 (포트폴리오 평가)", tools: "심스페이스" , product: "내면 데이터 차트", question: "나의 내면 데이터를 분석하여 자신을 주도적으로 이해하고 표현하는가?", method: "포트폴리오" },
+      { ch: "감", label: "각으로 익히기", act: "나의 감정·강점을 보여주는 AI 로봇 만들기", ask: ["K"], eval: "로봇 프로토타입 (실기 평가)", tools: "엔트리 · 햄스터봇 · 미주" , product: "로봇 프로토타입", question: "나의 감정·강점을 담은 알고리즘을 설계하여 AI 로봇으로 구동하는가?", method: "실기" },
+      { ch: "문", label: "해로 짓기", act: "나의 AI 로봇을 소개하는 카드뉴스 만들기", ask: ["A", "S"], eval: "카드뉴스 산출물 (산출물 평가)", tools: "자작자작 · 캔바" , product: "카드뉴스", question: "나의 감정·강점과 로봇의 특징이 잘 드러나도록 자료를 제작하는가?", method: "산출물" },
+      { ch: "해", label: "결로 잇기", act: "나의 감정·강점 AI 로봇 공유하기", ask: ["S"], eval: "발표 및 공유 (관찰 평가)", tools: "패들렛" , product: "발표 및 공유", question: "산출물을 적극적으로 발표하고 타인의 감정에 공감하는 태도를 보이는가?", method: "관찰" },
     ],
     standards: {
       "3~4학년군": [
@@ -493,10 +550,10 @@ const PROJECTS = [
       { grade: "5학년", focus: "우리 학교의 문제", desc: "학교 전체로 범위를 넓혀 공공의 문제 해결" },
     ],
     stages: [
-      { ch: "공", label: "감으로 열기", act: "우리 학급·학교의 문제 발견하기", ask: ["A"], eval: "문제 발견 보고서 (보고서 평가)", tools: "멘티미터 · 패들렛" },
-      { ch: "감", label: "각으로 익히기", act: "문제를 해결하는 AI 로봇 만들기 (센서 기반 감지·경보)", ask: ["S", "K"], eval: "로봇 구동 (실기 평가)", tools: "엔트리 · 햄스터봇" },
-      { ch: "문", label: "해로 짓기", act: "AI 로봇 사용 설명서 만들기", ask: ["A", "K"], eval: "투닝 만화 산출물 (산출물 평가)", tools: "투닝" },
-      { ch: "해", label: "결로 잇기", act: "AI 로봇 사용 설명서 공유하기", ask: ["S"], eval: "발표 및 공유 (관찰 평가)", tools: "패들렛" },
+      { ch: "공", label: "감으로 열기", act: "우리 학급·학교의 문제 발견하기", ask: ["A"], eval: "문제 발견 보고서 (보고서 평가)", tools: "멘티미터 · 패들렛" , product: "문제 발견 보고서", question: "우리 학급·학교 문제를 타당한 근거를 들어 발견하고 분석하는가?", method: "보고서" },
+      { ch: "감", label: "각으로 익히기", act: "문제를 해결하는 AI 로봇 만들기 (센서 기반 감지·경보)", ask: ["S", "K"], eval: "로봇 구동 (실기 평가)", tools: "엔트리 · 햄스터봇" , product: "로봇 구동", question: "학급·학교의 문제를 해결할 수 있는 알고리즘을 AI 로봇으로 구현하는가?", method: "실기" },
+      { ch: "문", label: "해로 짓기", act: "AI 로봇 사용 설명서 만들기", ask: ["A", "K"], eval: "투닝 만화 산출물 (산출물 평가)", tools: "투닝" , product: "네컷만화", question: "AI 로봇의 문제 해결 과정을 논리적인 서사 구조를 갖춘 웹툰으로 표현하는가?", method: "산출물" },
+      { ch: "해", label: "결로 잇기", act: "AI 로봇 사용 설명서 공유하기", ask: ["S"], eval: "발표 및 공유 (관찰 평가)", tools: "패들렛" , product: "발표 및 공유", question: "AI 로봇 도입에 따른 긍정적 변화와 한계점을 비판적으로 토의하고 공유하는가?", method: "관찰" },
     ],
     standards: {
       "3~4학년군": [
@@ -526,10 +583,10 @@ const PROJECTS = [
       { grade: "5학년", focus: "지역사회 연대", desc: "지역사회로 확장해 캠페인으로 확산" },
     ],
     stages: [
-      { ch: "공", label: "감으로 열기", act: "가정·지역사회에서의 SDGs 경험 표현하기", ask: ["A"], eval: "가상 세계 산출물 (산출물 평가)", tools: "GreenQuest · 심스페이스" },
-      { ch: "감", label: "각으로 익히기", act: "디지털 트윈 설계 후 Sim-to-Real 자율주행 미션", ask: ["S", "K"], eval: "로봇 구동 (실기 평가)", tools: "엔트리 · 햄스터봇" },
-      { ch: "문", label: "해로 짓기", act: "SDGs AI 로봇 발표 자료 만들기", ask: ["A", "K"], eval: "캔바 영상 산출물 (산출물 평가)", tools: "캔바" },
-      { ch: "해", label: "결로 잇기", act: "SDGs를 위한 AI 로봇 캠페인하기", ask: ["S"], eval: "발표 및 공유 (관찰 평가)", tools: "패들렛" },
+      { ch: "공", label: "감으로 열기", act: "가정·지역사회에서의 SDGs 경험 표현하기", ask: ["A"], eval: "가상 세계 산출물 (산출물 평가)", tools: "GreenQuest · 심스페이스" , product: "가상 세계", question: "가정·지역사회의 문제를 SDGs와 연결하여 가상 세계에 구조화하여 표현하는가?", method: "산출물" },
+      { ch: "감", label: "각으로 익히기", act: "디지털 트윈 설계 후 Sim-to-Real 자율주행 미션", ask: ["S", "K"], eval: "로봇 구동 (실기 평가)", tools: "엔트리 · 햄스터봇" , product: "로봇 구동", question: "가상 세계에 설계한 코드를 현실의 AI 로봇에 적용하여 자율 주행 미션을 완수하는가?", method: "실기" },
+      { ch: "문", label: "해로 짓기", act: "SDGs AI 로봇 발표 자료 만들기", ask: ["A", "K"], eval: "캔바 영상 산출물 (산출물 평가)", tools: "캔바" , product: "캠페인 영상", question: "지구촌 문제 해결을 촉구하는 설득력 있는 행동 변화 캠페인 영상을 제작하는가?", method: "산출물" },
+      { ch: "해", label: "결로 잇기", act: "SDGs를 위한 AI 로봇 캠페인하기", ask: ["S"], eval: "발표 및 공유 (관찰 평가)", tools: "패들렛" , product: "발표 및 공유", question: "캠페인을 공유하며 지속 가능한 미래를 위한 세계 시민으로서의 실천 의지를 표현하는가?", method: "관찰" },
     ],
     standards: {
       "3~4학년군": [
@@ -559,10 +616,10 @@ const PROJECTS = [
       { grade: "5학년", focus: "직업 로봇", desc: "사회적 기여를 하는 나의 직업 로봇 기획" },
     ],
     stages: [
-      { ch: "공", label: "감으로 열기", act: "내가 꿈꾸는 미래·직업과 SDGs 비교하기", ask: ["A"], eval: "챗봇 대화 내용 (관찰 평가)", tools: "미주 · 심스페이스" },
-      { ch: "감", label: "각으로 익히기", act: "SDGs를 위한 반려·직업 AI 로봇 만들기", ask: ["K"], eval: "로봇 구동 (실기 평가)", tools: "엔트리 · 햄스터봇" },
-      { ch: "문", label: "해로 짓기", act: "AI 로봇을 평가하는 글 쓰기", ask: ["A", "S"], eval: "기술 평가 에세이 (서·논술형 평가)", tools: "자작자작" },
-      { ch: "해", label: "결로 잇기", act: "미래 세대·기업·정부에 디지털 포트폴리오 제안하기", ask: ["A", "S"], eval: "발표 및 공유 (관찰 평가)", tools: "북크리에이터" },
+      { ch: "공", label: "감으로 열기", act: "내가 꿈꾸는 미래·직업과 SDGs 비교하기", ask: ["A"], eval: "챗봇 대화 내용 (관찰 평가)", tools: "미주 · 심스페이스" , product: "챗봇 대화 내용", question: "AI 챗봇과의 대화를 통해 자신의 미래 직업과 SDGs를 연계하여 탐색하는가?", method: "관찰" },
+      { ch: "감", label: "각으로 익히기", act: "SDGs를 위한 반려·직업 AI 로봇 만들기", ask: ["K"], eval: "로봇 구동 (실기 평가)", tools: "엔트리 · 햄스터봇" , product: "로봇 구동", question: "자신의 미래를 도울 반려·직업 AI 로봇의 알고리즘을 오류 없이 설계하고 구동하는가?", method: "실기" },
+      { ch: "문", label: "해로 짓기", act: "AI 로봇을 평가하는 글 쓰기", ask: ["A", "S"], eval: "기술 평가 에세이 (서·논술형 평가)", tools: "자작자작" , product: "기술 평가 에세이", question: "인공지능 시대의 인간다움에 대해 성찰하고 자신의 주장을 설득력 있게 쓰는가?", method: "서·논술형" },
+      { ch: "해", label: "결로 잇기", act: "미래 세대·기업·정부에 디지털 포트폴리오 제안하기", ask: ["A", "S"], eval: "발표 및 공유 (관찰 평가)", tools: "북크리에이터" , product: "발표 및 공유", question: "프로젝트 산출물을 종합하여 자신의 미래 비전을 자신감 있게 제안하고 공유하는가?", method: "관찰" },
     ],
     standards: {
       "3~4학년군": [
@@ -1363,6 +1420,62 @@ export default function App() {
                     </p>
                   </div>
                 ))}
+              </div>
+
+              {/* 학생 산출물 */}
+              <h4 className="font-extrabold mb-3 flex items-center gap-2">
+                <Sparkles size={17} style={{ color: p.color }} /> 학생 산출물
+              </h4>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 mb-8">
+                {(OUTPUTS[p.key] || []).map((o, i) => {
+                  const b = GRADE_BADGE[o.g];
+                  return (
+                    <div
+                      key={`${o.name}-${i}`}
+                      className="rounded-xl px-3.5 py-3 flex items-center gap-2.5 transition-transform hover:-translate-y-0.5"
+                      style={{ background: "#fff", border: "1px solid #F1F5F9" }}
+                    >
+                      <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${b.color}12` }}>
+                        <Bot size={15} style={{ color: b.color }} />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold truncate">{o.name}</p>
+                        <p className="text-[11px] font-semibold" style={{ color: b.color }}>{b.label}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* 과정중심 평가 */}
+              <h4 className="font-extrabold mb-3 flex items-center gap-2">
+                <ClipboardCheck size={17} style={{ color: p.color }} /> 과정중심 평가 계획
+              </h4>
+              <div className="rounded-2xl overflow-hidden mb-8" style={{ border: "1px solid #E2E8F0" }}>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs" style={{ minWidth: 620 }}>
+                    <thead>
+                      <tr style={{ background: "#F8FAFC" }}>
+                        <th className="text-left px-4 py-2.5 font-extrabold" style={{ color: C.gray, width: 130 }}>산출물</th>
+                        <th className="text-left px-4 py-2.5 font-extrabold" style={{ color: C.gray }}>평가 문항</th>
+                        <th className="text-left px-4 py-2.5 font-extrabold" style={{ color: C.gray, width: 80 }}>방법</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {p.stages.map((s, i) => (
+                        <tr key={i} style={{ borderTop: "1px solid #F1F5F9" }}>
+                          <td className="px-4 py-3 font-bold align-top" style={{ color: p.color }}>{s.product}</td>
+                          <td className="px-4 py-3 leading-relaxed align-top">{s.question}</td>
+                          <td className="px-4 py-3 align-top">
+                            <span className="px-2 py-0.5 rounded font-bold" style={{ background: `${p.color}12`, color: p.color }}>
+                              {s.method}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {/* 성취기준 (펼치기) */}
