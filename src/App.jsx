@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { firebaseReady, db, auth } from "./firebase.js";
 import { buildPlanHtml, planToText, safeFileName } from "./planDocument.js";
 import { buildPlanDocx } from "./planDocx.js";
+import { buildPlanHwpx } from "./planHwpx.js";
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc,
 } from "firebase/firestore";
@@ -969,18 +970,21 @@ export default function App() {
     }
   };
 
-  /** 2) 한글(HWP)·워드용 .docx 파일로 저장 */
-  const [docxBusy, setDocxBusy] = useState(false);
-  const downloadDocx = async () => {
-    setDocxBusy(true);
+  /** 2) 한글 전용 .hwpx / 워드용 .docx 저장 */
+  const [docBusy, setDocBusy] = useState(null); // null | "hwpx" | "docx"
+  const downloadOfficeDoc = async (kind) => {
+    setDocBusy(kind);
     try {
-      const blob = await buildPlanDocx(genResult);
-      saveBlob(blob, `${planFileName()}.docx`);
+      const blob =
+        kind === "hwpx"
+          ? await buildPlanHwpx(genResult)
+          : await buildPlanDocx(genResult);
+      saveBlob(blob, `${planFileName()}.${kind}`);
       setExportOpen(false);
     } catch (e) {
       alert("문서 생성에 실패했습니다: " + (e?.message || e));
     } finally {
-      setDocxBusy(false);
+      setDocBusy(null);
     }
   };
 
@@ -2619,11 +2623,18 @@ export default function App() {
                   primary: true,
                 },
                 {
-                  onClick: downloadDocx,
+                  onClick: () => downloadOfficeDoc("hwpx"),
                   icon: FileText,
                   color: C.blue,
-                  title: docxBusy ? "문서 만드는 중..." : "한글(HWP) · 워드로 저장",
-                  desc: "한글과 워드에서 바로 열어 수정할 수 있는 .docx 파일",
+                  title: docBusy === "hwpx" ? "문서 만드는 중..." : "한글(HWP)로 저장",
+                  desc: "한글에서 더블클릭으로 바로 열리는 .hwpx 파일",
+                },
+                {
+                  onClick: () => downloadOfficeDoc("docx"),
+                  icon: FileText,
+                  color: "#2B579A",
+                  title: docBusy === "docx" ? "문서 만드는 중..." : "워드로 저장",
+                  desc: "MS 워드·구글 문서에서 열리는 .docx 파일",
                 },
                 {
                   onClick: downloadTxt,
