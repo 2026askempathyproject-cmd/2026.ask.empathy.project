@@ -182,6 +182,101 @@ const INITIAL_MATERIALS = {
 };
 
 /* ============================================================
+   교사용 실행 가이드 (최종 보고서 연구과제 1·3 기준)
+   ============================================================ */
+const GUIDE_STEPS = [
+  {
+    no: "STEP 1", title: "준비하기", color: C.coral, icon: Settings,
+    desc: "프로젝트를 시작하기 전, 교실 환경과 학생·교사의 기초 역량을 함께 다집니다.",
+    blocks: [
+      {
+        name: "AI·디지털 교육 환경 조성",
+        items: ["맞춤형 디지털 기기 환경 구축", "디지털 기기 기본 학습 선행", "AI·디지털 윤리 교육", "관련 도서 독서 활동 연계"],
+      },
+      {
+        name: "AI·디지털 기초 소양 교육",
+        items: ["AI·에듀테크 활용 학습", "데이터 AI 학습으로 비판적 사고 촉진", "피지컬 AI 모델 학습", "Sim-to-Real 하이브리드 학습"],
+      },
+      {
+        name: "학생 주도성 강화",
+        items: ["주도적 학급 자치", "메이커 동아리 운영", "AI·로봇 해커톤 참가", "지역사회 연계 진로 활동"],
+      },
+      {
+        name: "교사 주도성 강화",
+        items: ["AI·디지털 교원 학습 공동체", "AI·정보교육연구회 연계", "에듀테크 실증 및 직접 개발", "AI·디지털 수업·평가 전문가 과정"],
+      },
+    ],
+  },
+  {
+    no: "STEP 2", title: "실행하기", color: C.amber, icon: Rocket,
+    desc: "네 개의 프로젝트를 각 12차시씩, 자기 → 학교 → 세상 → 미래 순으로 운영합니다.",
+    blocks: null,
+  },
+  {
+    no: "STEP 3", title: "확장하기", color: C.blue, icon: Share2,
+    desc: "교실에서 끝나지 않도록 교원·가정·지역사회로 배움을 확산합니다.",
+    blocks: [
+      {
+        name: "교원 네트워크 확산",
+        items: ["교내 교원 대상 수업 공개", "교원 학습 공동체 공동 성찰", "연구회 프로그램 연계", "학교로 찾아가는 연수 나눔"],
+      },
+      {
+        name: "플랫폼 개방",
+        items: ["AI 기획자 통합 웹사이트 배포", "교수·학습 과정안 및 활동 자료 탑재", "맞춤형 피지컬 AI 학습 웹앱 공유"],
+      },
+      {
+        name: "교육 공동체 연계",
+        items: ["디지털 포트폴리오 전시회", "공감문해 전자책 전시회", "가정 내 학부모 편지 전송", "선·후배 학생 배움 공유"],
+      },
+    ],
+  },
+];
+
+/** 4학년 · 5학년 나선형 연계 (보고서 '교육과정 재구성' 표) */
+const SPIRAL_TABLE = [
+  {
+    aspect: "학습 주안점",
+    g4: "경험과 직관적 탐색",
+    g5: "분석과 실천적 구현",
+    link: "인식의 범위를 '나와 주변'에서 '사회와 시스템'으로 확장",
+  },
+  {
+    aspect: "데이터 접근",
+    g4: "감정 및 키워드 수집, 직관적 분류",
+    g5: "누적 데이터 차트 분석, 통계 기반 인과 관계 추론",
+    link: "데이터의 '소비·수집'에서 '비판적 해석·가치 창출'로 고도화",
+  },
+  {
+    aspect: "AI 활용",
+    g4: "기초적 블록 코딩 및 로봇 구동 경험",
+    g5: "Sim-to-Real 알고리즘 설계 및 물리적 로봇 구동",
+    link: "도구와의 '상호작용'을 넘어 기술을 통제하는 '설계자'로 도약",
+  },
+  {
+    aspect: "문제 해결",
+    g4: "공감 기반의 아이디어 발상 및 시각적 매체 표현",
+    g5: "사회적 가치를 담은 해결책 도출 및 캠페인 확산",
+    link: "단편적 '공감'에서 공동체를 위한 실천적 '연대'로 발전",
+  },
+];
+
+/** 보고서의 '에듀테크 활용 Tip' */
+const EDU_TIPS = [
+  {
+    stage: "공", color: C.coral,
+    text: "심스페이스의 데이터 대시보드로 개별 학생의 정서 변화 추이를 분석하고 학급 전체의 마음 데이터를 시각화하면, 데이터 기반 사회정서학습(SEL)을 실천할 수 있어요.",
+  },
+  {
+    stage: "감", color: C.amber,
+    text: "수준별(기초·기본·심화) 웹앱 가이드를 엔트리 블록 코딩과 연계해 제공하면 기술적 진입 장벽을 낮추고, 학생이 내면의 창의적 표현에 집중하도록 지원할 수 있어요.",
+  },
+  {
+    stage: "문", color: C.emerald,
+    text: "자작자작에 성취기준 기반 평가 루브릭을 사전 학습시키면, 학생 개개인의 글쓰기 수준에 맞는 정교하고 즉각적인 맞춤형 피드백을 제공할 수 있어요.",
+  },
+];
+
+/* ============================================================
    프로젝트 4개 상세 (최종 보고서 연구과제 2 기준)
    ============================================================ */
 const ASK_TAG = {
@@ -672,7 +767,7 @@ export default function App() {
     ["cycle", "공감문해 모형"],
     ["projects", "프로젝트"],
     ["results", "연구 결과"],
-    ["apps", "나의 웹앱"],
+    ["guide", "적용 가이드"],
     ["materials", "자료실"],
     ["generator", "AI 기획자"],
   ];
@@ -1242,6 +1337,157 @@ export default function App() {
               검증 도구 · 디지털 리터러시 수준측정 연구(KERIS, 2026), 초등학생 사회정서역량 측정도구(2025),
               자기주도학습 능력척도(2023) · 5단계 리커트 척도
             </p>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ================= 교사용 실행 가이드 ================= */}
+      <section id="guide" className="py-20 px-4">
+        <div className="max-w-6xl mx-auto">
+          <FadeIn>
+            <SectionTitle
+              badge="FOR TEACHERS"
+              title="우리 학교에 적용하기"
+              sub="준비 → 실행 → 확장 3단계로 정리한 교사용 실행 가이드입니다. 어느 교실에서든 그대로 따라 하거나 학교 상황에 맞게 변형할 수 있습니다."
+              color={C.coral}
+            />
+          </FadeIn>
+
+          {/* 3단계 */}
+          <div className="flex flex-col gap-5 mb-12">
+            {GUIDE_STEPS.map((s, i) => (
+              <FadeIn key={s.no} delay={i * 0.1}>
+                <div className="rounded-3xl p-6 md:p-7" style={glass}>
+                  <div className="flex items-start gap-4 mb-5">
+                    <span className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style={{ background: `${s.color}14` }}>
+                      <s.icon size={22} style={{ color: s.color }} />
+                    </span>
+                    <div>
+                      <p className="text-xs font-black tracking-widest" style={{ color: s.color }}>{s.no}</p>
+                      <h3 className="text-xl font-extrabold">{s.title}</h3>
+                      <p className="text-sm mt-1" style={{ color: C.gray }}>{s.desc}</p>
+                    </div>
+                  </div>
+
+                  {s.blocks ? (
+                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-3">
+                      {s.blocks.map((b) => (
+                        <div key={b.name} className="rounded-2xl p-4" style={{ background: "#F8FAFC" }}>
+                          <p className="text-sm font-extrabold mb-2" style={{ color: s.color }}>{b.name}</p>
+                          <ul className="flex flex-col gap-1.5">
+                            {b.items.map((it) => (
+                              <li key={it} className="flex items-start gap-1.5 text-xs leading-relaxed" style={{ color: C.ink }}>
+                                <Check size={12} className="mt-0.5 shrink-0" style={{ color: s.color }} />
+                                {it}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    /* 48차시 로드맵 */
+                    <div className="grid md:grid-cols-4 gap-3">
+                      {PROJECTS.map((p, j) => (
+                        <div key={p.key} className="rounded-2xl p-4 relative" style={{ background: "#F8FAFC" }}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-black" style={{ background: p.color }}>
+                              {p.ch}
+                            </span>
+                            <span className="text-xs font-bold" style={{ color: p.color }}>{p.no} {p.area}</span>
+                          </div>
+                          <p className="text-sm font-extrabold leading-tight mb-1">{p.title}</p>
+                          <p className="text-xs mb-2" style={{ color: C.gray }}>{p.question}</p>
+                          <div className="flex items-center gap-1.5 text-xs font-bold" style={{ color: p.color }}>
+                            <ClipboardCheck size={12} /> {p.hours}차시
+                          </div>
+                          {j < 3 && (
+                            <ChevronRight size={20} className="hidden md:block absolute top-1/2 -right-3 -translate-y-1/2 z-10" style={{ color: "#CBD5E1" }} />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {!s.blocks && (
+                    <p className="text-xs mt-3 text-center font-semibold" style={{ color: C.gray }}>
+                      총 48차시 · 한 학기(2월~8월) 운영 기준 · 학교 상황에 따라 프로젝트 단위로 선택 운영 가능
+                    </p>
+                  )}
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+
+          {/* 학년별 나선형 연계 */}
+          <FadeIn>
+            <h3 className="text-xl font-extrabold mb-4 flex items-center gap-2">
+              <Layers size={19} style={{ color: C.blue }} /> 학년별 적용 포인트 — 나선형 연계
+            </h3>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <div className="rounded-3xl overflow-hidden mb-4" style={glass}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm" style={{ minWidth: 720 }}>
+                  <thead>
+                    <tr style={{ background: "#F8FAFC" }}>
+                      <th className="text-left px-4 py-3 font-extrabold text-xs" style={{ color: C.gray, width: 110 }}>구분</th>
+                      <th className="text-left px-4 py-3 font-extrabold text-xs" style={{ color: C.amber }}>
+                        4학년 <span className="font-semibold" style={{ color: C.gray }}>· 구체적 조작기 중심</span>
+                      </th>
+                      <th className="text-left px-4 py-3 font-extrabold text-xs" style={{ color: C.blue }}>
+                        5학년 <span className="font-semibold" style={{ color: C.gray }}>· 형식적 조작기 진입</span>
+                      </th>
+                      <th className="text-left px-4 py-3 font-extrabold text-xs" style={{ color: C.coral }}>나선형 연계</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {SPIRAL_TABLE.map((r, i) => (
+                      <tr key={r.aspect} style={{ borderTop: "1px solid #F1F5F9", background: i % 2 ? "rgba(248,250,252,0.5)" : "transparent" }}>
+                        <td className="px-4 py-3.5 font-extrabold text-xs align-top">{r.aspect}</td>
+                        <td className="px-4 py-3.5 text-xs leading-relaxed align-top" style={{ color: C.ink }}>{r.g4}</td>
+                        <td className="px-4 py-3.5 text-xs leading-relaxed align-top" style={{ color: C.ink }}>{r.g5}</td>
+                        <td className="px-4 py-3.5 text-xs leading-relaxed align-top font-semibold" style={{ color: C.coral }}>{r.link}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </FadeIn>
+
+          {/* 에듀테크 활용 Tip */}
+          <FadeIn>
+            <h3 className="text-xl font-extrabold mb-4 mt-10 flex items-center gap-2">
+              <Lightbulb size={19} style={{ color: C.amber }} /> 에듀테크 활용 Tip
+            </h3>
+          </FadeIn>
+          <div className="grid md:grid-cols-3 gap-4">
+            {EDU_TIPS.map((t, i) => (
+              <FadeIn key={t.stage} delay={i * 0.1}>
+                <div className="rounded-3xl p-6 h-full" style={{ background: "rgba(255,255,255,0.85)", border: `1.5px solid ${t.color}25` }}>
+                  <span className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black mb-3" style={{ background: t.color }}>
+                    {t.stage}
+                  </span>
+                  <p className="text-sm leading-relaxed" style={{ color: C.ink }}>{t.text}</p>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+
+          <FadeIn delay={0.2}>
+            <div className="mt-8 rounded-3xl p-6 md:p-7 text-center" style={{ background: `linear-gradient(135deg,${C.blue}0D,${C.coral}0D)`, border: "1px solid #E2E8F0" }}>
+              <p className="text-sm font-semibold mb-4" style={{ color: C.gray }}>
+                학년과 소재만 입력하면 우리 반에 맞는 4단계 지도안이 바로 만들어집니다.
+              </p>
+              <button
+                onClick={() => scrollTo("generator")}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-white text-sm transition-transform hover:scale-105"
+                style={{ background: `linear-gradient(90deg,${C.blue},${C.coral})`, boxShadow: "0 8px 24px rgba(37,99,235,0.3)" }}
+              >
+                <Wand2 size={17} /> AI 기획자로 우리 반 지도안 만들기
+              </button>
+            </div>
           </FadeIn>
         </div>
       </section>
