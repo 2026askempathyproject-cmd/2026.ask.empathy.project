@@ -4,34 +4,14 @@ html {
   scroll-behavior: smooth;
 }
 
-/* ── 인쇄(PDF 저장) 시 AI 기획자 결과만 깔끔하게 출력 ── */
+/*
+  지도안 인쇄는 별도 창(planDocument.js)에서 처리하므로
+  이 페이지 자체를 인쇄용으로 가공하지 않습니다.
+  다만 사용자가 브라우저 메뉴로 직접 인쇄할 경우를 대비해
+  모달·오버레이만 숨겨 둡니다.
+*/
 @media print {
-  body {
-    background: #fff !important;
-  }
-  /* 인쇄 대상 외 모든 섹션 숨김 */
-  body > div > header,
-  body > div > footer,
-  body > div > section:not(.print-area) {
-    display: none !important;
-  }
   .no-print {
     display: none !important;
-  }
-  .print-area {
-    padding: 0 !important;
-  }
-  /* 배경/그림자 제거해 잉크 절약 및 가독성 확보 */
-  .print-area * {
-    backdrop-filter: none !important;
-    box-shadow: none !important;
-  }
-  /* 단계 카드가 페이지 중간에서 잘리지 않도록 */
-  .print-area .rounded-2xl {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-  @page {
-    margin: 15mm;
   }
 }

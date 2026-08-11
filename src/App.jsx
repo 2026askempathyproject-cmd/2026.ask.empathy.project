@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import { firebaseReady, db, auth } from "./firebase.js";
+import { buildPlanHtml, planToText, safeFileName } from "./planDocument.js";
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc,
 } from "firebase/firestore";
@@ -130,38 +131,6 @@ const dataService = {
 /* ============================================================
    AI 기획자 — 서버 API 호출 (키는 서버에만 존재)
    ============================================================ */
-/** 생성된 지도안을 텍스트로 변환 (복사·저장용) */
-function planToText(plan) {
-  const lines = [
-    `[피지컬 AI 기반 공감문해 프로젝트 수업 지도안]`,
-    ``,
-    `프로젝트명: ${plan.projectTitle}`,
-    `대상 학년: ${plan.gradeLabel} (${plan.gradeBand}군)`,
-    `수업 소재: ${plan.keyword}`,
-    ``,
-    `[개요]`,
-    plan.overview,
-    ``,
-  ];
-  plan.stages.forEach((s, i) => {
-    lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━`);
-    lines.push(`STEP ${i + 1}. ${s.stage}${s.label} — ${s.title}`);
-    lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━`);
-    lines.push(`▷ 학습 목표: ${s.goal}`);
-    lines.push(`▷ 주요 활동`);
-    (s.activities || []).forEach((a) => lines.push(`   · ${a}`));
-    lines.push(`▷ 관련 성취기준`);
-    (s.standards || []).forEach((st) => lines.push(`   [${st.code}] ${st.description}`));
-    if (s.tools) lines.push(`▷ 추천 에듀테크: ${s.tools}`);
-    if (s.assessment) lines.push(`▷ 과정중심평가: ${s.assessment}`);
-    if (s.ask) lines.push(`▷ 중점 ASK 역량: ${s.ask}`);
-    lines.push(``);
-  });
-  lines.push(`※ 2022 개정 교육과정 성취기준을 근거로 AI가 생성한 초안입니다.`);
-  lines.push(`   피지컬 AI 기반 공감문해 프로젝트 · AI 기획자`);
-  return lines.join("\n");
-}
-
 async function generateProjectPlan({ grade, keyword }) {
   const res = await fetch("/api/generate", {
     method: "POST",
@@ -971,8 +940,24 @@ export default function App() {
   const [genError, setGenError] = useState(null);
 
   const [copied, setCopied] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
 
-  /** 지도안 텍스트 복사 */
+  /** 지도안 기본 파일명 */
+  const planFileName = () =>
+    safeFileName(`공감문해_지도안_${genResult.gradeLabel}_${genResult.keyword}`);
+
+  /** 파일 내려받기 공통 */
+  const saveBlob = (blob, filename) => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+
+  /** 1) 텍스트 복사 */
   const copyPlan = async () => {
     try {
       await navigator.clipboard.writeText(planToText(genResult));
@@ -983,16 +968,36 @@ export default function App() {
     }
   };
 
-  /** 지도안 .txt 파일로 저장 */
-  const downloadPlan = () => {
-    const blob = new Blob(["﻿" + planToText(genResult)], {
-      type: "text/plain;charset=utf-8",
-    });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `공감문해_지도안_${genResult.gradeLabel}_${genResult.keyword}.txt`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+  /** 2) 한글(HWP)·워드에서 열리는 문서로 저장 */
+  const downloadDoc = () => {
+    const html = buildPlanHtml(genResult);
+    saveBlob(
+      new Blob(["﻿" + html], { type: "application/msword;charset=utf-8" }),
+      `${planFileName()}.doc`
+    );
+    setExportOpen(false);
+  };
+
+  /** 3) PDF 저장 / 인쇄 — 지도안만 담은 새 창을 열어 인쇄 */
+  const printPlan = () => {
+    const w = window.open("", "_blank", "width=900,height=1000");
+    if (!w) {
+      alert("팝업이 차단되었습니다. 주소창의 팝업 차단 아이콘을 눌러 허용해 주세요.");
+      return;
+    }
+    w.document.open();
+    w.document.write(buildPlanHtml(genResult, { forPrint: true }));
+    w.document.close();
+    setExportOpen(false);
+  };
+
+  /** 4) 텍스트 파일로 저장 */
+  const downloadTxt = () => {
+    saveBlob(
+      new Blob(["﻿" + planToText(genResult)], { type: "text/plain;charset=utf-8" }),
+      `${planFileName()}.txt`
+    );
+    setExportOpen(false);
   };
 
   const runGenerator = useCallback(async () => {
@@ -2369,7 +2374,7 @@ export default function App() {
       </section>
 
       {/* ================= AI 기획자 (성취기준 기반 제너레이터) ================= */}
-      <section id="generator" className="py-20 px-4 print-area">
+      <section id="generator" className="py-20 px-4">
         <div className="max-w-4xl mx-auto">
           <FadeIn>
             <SectionTitle
@@ -2480,8 +2485,7 @@ export default function App() {
                       <Layers size={17} style={{ color: C.blue }} />
                       <h4 className="font-extrabold text-sm md:text-base">공·감·문·해 4단계 설계안</h4>
                     </div>
-                    {/* 내보내기 버튼 (인쇄 시 숨김) */}
-                    <div className="flex gap-2 no-print">
+                    <div className="flex gap-2">
                       <button
                         onClick={copyPlan}
                         className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-transform hover:scale-105"
@@ -2490,18 +2494,11 @@ export default function App() {
                         {copied ? <><Check size={14} /> 복사됨</> : <><FileText size={14} /> 텍스트 복사</>}
                       </button>
                       <button
-                        onClick={downloadPlan}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-transform hover:scale-105"
-                        style={{ border: "1.5px solid #E2E8F0", background: "#fff", color: C.gray }}
+                        onClick={() => setExportOpen(true)}
+                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white transition-transform hover:scale-105"
+                        style={{ background: C.blue, boxShadow: "0 4px 12px rgba(37,99,235,0.3)" }}
                       >
-                        <Download size={14} /> 파일 저장
-                      </button>
-                      <button
-                        onClick={() => window.print()}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white transition-transform hover:scale-105"
-                        style={{ background: C.blue }}
-                      >
-                        <Printer size={14} /> 인쇄 · PDF 저장
+                        <Download size={14} /> 지도안 내려받기
                       </button>
                     </div>
                   </div>
@@ -2580,6 +2577,82 @@ export default function App() {
           </FadeIn>
         </div>
       </section>
+
+      {/* ================= 지도안 내보내기 모달 ================= */}
+      {exportOpen && genResult && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ background: "rgba(15,23,42,0.5)", backdropFilter: "blur(6px)" }}
+          onClick={() => setExportOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl p-7"
+            style={{ background: "#fff", boxShadow: "0 24px 60px rgba(15,23,42,0.3)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between mb-1">
+              <h4 className="font-extrabold flex items-center gap-2">
+                <Download size={18} style={{ color: C.blue }} /> 지도안 내려받기
+              </h4>
+              <button onClick={() => setExportOpen(false)}>
+                <X size={18} style={{ color: C.gray }} />
+              </button>
+            </div>
+            <p className="text-xs mb-5" style={{ color: C.gray }}>
+              {genResult.gradeLabel} · {genResult.keyword} · 공·감·문·해 4단계 양식
+            </p>
+
+            <div className="flex flex-col gap-2.5">
+              {[
+                {
+                  onClick: printPlan,
+                  icon: Printer,
+                  color: C.coral,
+                  title: "PDF로 저장 · 인쇄",
+                  desc: "인쇄 창에서 '대상'을 PDF로 선택하면 저장됩니다",
+                  primary: true,
+                },
+                {
+                  onClick: downloadDoc,
+                  icon: FileText,
+                  color: C.blue,
+                  title: "한글(HWP) · 워드로 저장",
+                  desc: "한글과 워드에서 바로 열어 수정할 수 있는 .doc 파일",
+                },
+                {
+                  onClick: downloadTxt,
+                  icon: File,
+                  color: C.gray,
+                  title: "텍스트 파일로 저장",
+                  desc: "메모장 등 어디서나 열리는 .txt 파일",
+                },
+              ].map((o) => (
+                <button
+                  key={o.title}
+                  onClick={o.onClick}
+                  className="flex items-center gap-3 p-4 rounded-2xl text-left transition-transform hover:scale-[1.02]"
+                  style={{
+                    border: `1.5px solid ${o.primary ? o.color : "#E2E8F0"}`,
+                    background: o.primary ? `${o.color}0A` : "#fff",
+                  }}
+                >
+                  <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${o.color}14` }}>
+                    <o.icon size={18} style={{ color: o.color }} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="font-extrabold text-sm">{o.title}</p>
+                    <p className="text-xs mt-0.5" style={{ color: C.gray }}>{o.desc}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <p className="text-xs mt-5 text-center leading-relaxed" style={{ color: "#94A3B8" }}>
+              어떤 방식으로 저장하든 공·감·문·해 단계 표시와 성취기준이 함께 담깁니다.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ================= 산출물 확대 보기 ================= */}
       {lightbox && (
