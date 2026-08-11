@@ -278,41 +278,41 @@ const EDUTECH_GROUPS = [
   {
     type: "AI 코스웨어", color: C.coral, icon: Cpu,
     tools: [
-      { name: "심스페이스", use: "학생의 감정 상태를 기록하고 분석하는 맞춤형 마음 데이터 코스웨어", proj: ["①", "④"] },
-      { name: "자작자작", use: "학생이 쓴 글을 분석하고 주도적 고쳐쓰기를 돕는 AI 글쓰기 튜터", proj: ["①", "④"] },
-      { name: "구글 클래스룸", use: "과제 안내, 산출물 누적 관리, 형성 평가를 위한 학습 관리 플랫폼", proj: ["전체"] },
+      { name: "심스페이스", use: "학생의 감정 상태를 기록하고 분석하는 맞춤형 마음 데이터 코스웨어", proj: ["①", "④"] , url: "https://seamspace.me" },
+      { name: "자작자작", use: "학생이 쓴 글을 분석하고 주도적 고쳐쓰기를 돕는 AI 글쓰기 튜터", proj: ["①", "④"] , url: "https://www.jajakjajak.com" },
+      { name: "구글 클래스룸", use: "과제 안내, 산출물 누적 관리, 형성 평가를 위한 학습 관리 플랫폼", proj: ["전체"] , url: "https://classroom.google.com" },
     ],
   },
   {
     type: "데이터 수집 및 분석", color: C.blue, icon: TrendingUp,
     tools: [
-      { name: "멘티미터", use: "학급 및 학교의 문제 상황 투표 및 핵심 키워드 데이터 수집", proj: ["②"] },
-      { name: "통그라미", use: "지역사회의 지속가능발전목표(SDGs) 관련 통계 자료 분석", proj: ["③"] },
-      { name: "GreenQuest", use: "(기 SW 수상작) 게임 몰입형 환경에서 사회 문제 탐구 및 분석", proj: ["③", "④"] },
+      { name: "멘티미터", use: "학급 및 학교의 문제 상황 투표 및 핵심 키워드 데이터 수집", proj: ["②"] , url: "https://www.mentimeter.com" },
+      { name: "통그라미", use: "지역사회의 지속가능발전목표(SDGs) 관련 통계 자료 분석", proj: ["③"] , url: "https://tong.kostat.go.kr" },
+      { name: "GreenQuest", use: "(기 SW 수상작) 게임 몰입형 환경에서 사회 문제 탐구 및 분석", proj: ["③", "④"] , url: "" },
     ],
   },
   {
     type: "피지컬 AI 및 실감 탐구", color: C.amber, icon: Bot,
     tools: [
-      { name: "딜라이텍스", use: "가정 및 지역사회 문제의 해결책을 3D 가상 세계(메타버스)로 구축", proj: ["③"] },
-      { name: "엔트리", use: "가상(Sim)의 알고리즘 코딩 및 햄스터봇 연동 환경 구축", proj: ["전체"] },
-      { name: "햄스터봇", use: "가상의 알고리즘을 현실 물리 공간에 구현하는 피지컬 AI 교구", proj: ["전체"] },
+      { name: "딜라이텍스", use: "가정 및 지역사회 문제의 해결책을 3D 가상 세계(메타버스)로 구축", proj: ["③"] , url: "https://delightex.com" },
+      { name: "엔트리", use: "가상(Sim)의 알고리즘 코딩 및 햄스터봇 연동 환경 구축", proj: ["전체"] , url: "https://playentry.org" },
+      { name: "햄스터봇", use: "가상의 알고리즘을 현실 물리 공간에 구현하는 피지컬 AI 교구", proj: ["전체"] , url: "https://hamster.school" },
     ],
   },
   {
     type: "아이디어 생성 및 공유 협업", color: C.emerald, icon: Share2,
     tools: [
-      { name: "구글 Docs", use: "모둠원들이 실시간으로 공동 문서를 작업하며 아이디어를 구체화", proj: ["③"] },
-      { name: "미주(Mizou)", use: "교육용 챗봇으로 로봇에 페르소나를 부여하고 상호작용 대화 진행", proj: ["전체"] },
-      { name: "패들렛", use: "온라인 보드에 산출물, 디지털 갤러리, 캠페인 동영상 등을 탑재하여 공유", proj: ["전체"] },
+      { name: "구글 Docs", use: "모둠원들이 실시간으로 공동 문서를 작업하며 아이디어를 구체화", proj: ["③"] , url: "https://docs.google.com" },
+      { name: "미주(Mizou)", use: "교육용 챗봇으로 로봇에 페르소나를 부여하고 상호작용 대화 진행", proj: ["전체"] , url: "https://mizou.com" },
+      { name: "패들렛", use: "온라인 보드에 산출물, 디지털 갤러리, 캠페인 동영상 등을 탑재하여 공유", proj: ["전체"] , url: "https://padlet.com" },
     ],
   },
   {
     type: "창작", color: "#8B5CF6", icon: PenLine,
     tools: [
-      { name: "투닝", use: "실제 현장 사진에 해결책을 입력해 문제 해결 모습 직관적 구현", proj: ["②"] },
-      { name: "북크리에이터", use: "프로젝트 전 과정의 성장을 담은 전자책 포트폴리오 출판", proj: ["④"] },
-      { name: "캔바", use: "다양한 템플릿을 활용하여 카드뉴스, 영상, 발표 슬라이드 제작", proj: ["①", "③"] },
+      { name: "투닝", use: "실제 현장 사진에 해결책을 입력해 문제 해결 모습 직관적 구현", proj: ["②"] , url: "https://tooning.io" },
+      { name: "북크리에이터", use: "프로젝트 전 과정의 성장을 담은 전자책 포트폴리오 출판", proj: ["④"] , url: "https://bookcreator.com" },
+      { name: "캔바", use: "다양한 템플릿을 활용하여 카드뉴스, 영상, 발표 슬라이드 제작", proj: ["①", "③"] , url: "https://www.canva.com" },
     ],
   },
 ];
@@ -491,6 +491,10 @@ const EDU_TIPS = [
   {
     stage: "문", color: C.emerald,
     text: "자작자작에 성취기준 기반 평가 루브릭을 사전 학습시키면, 학생 개개인의 글쓰기 수준에 맞는 정교하고 즉각적인 맞춤형 피드백을 제공할 수 있어요.",
+  },
+  {
+    stage: "해", color: C.blue,
+    text: "패들렛에 로봇 소개 구동 영상과 카드뉴스를 공유하고 좋아요와 댓글로 소통할 수 있어요.",
   },
 ];
 
@@ -1776,21 +1780,35 @@ export default function App() {
                     <h4 className="font-extrabold text-sm">{g.type}</h4>
                   </div>
                   <div className="flex flex-col gap-3">
-                    {g.tools.map((t) => (
-                      <div key={t.name} className="rounded-xl p-3" style={{ background: "#F8FAFC" }}>
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <span className="font-extrabold text-sm" style={{ color: g.color }}>{t.name}</span>
-                          <span className="flex gap-1 shrink-0">
-                            {t.proj.map((p) => (
-                              <span key={p} className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: `${g.color}14`, color: g.color }}>
-                                {p}
-                              </span>
-                            ))}
-                          </span>
-                        </div>
-                        <p className="text-xs leading-relaxed" style={{ color: C.gray }}>{t.use}</p>
-                      </div>
-                    ))}
+                    {g.tools.map((t) => {
+                      const Tag = t.url ? "a" : "div";
+                      const props = t.url
+                        ? { href: t.url, target: "_blank", rel: "noopener noreferrer", title: `${t.name} 바로가기` }
+                        : {};
+                      return (
+                        <Tag
+                          key={t.name}
+                          {...props}
+                          className={`block rounded-xl p-3 transition-all ${t.url ? "cursor-pointer hover:-translate-y-0.5" : ""}`}
+                          style={{ background: "#F8FAFC", border: `1px solid ${t.url ? `${g.color}18` : "transparent"}` }}
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="font-extrabold text-sm flex items-center gap-1" style={{ color: g.color }}>
+                              {t.name}
+                              {t.url && <ExternalLink size={11} style={{ opacity: 0.65 }} />}
+                            </span>
+                            <span className="flex gap-1 shrink-0">
+                              {t.proj.map((p) => (
+                                <span key={p} className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: `${g.color}14`, color: g.color }}>
+                                  {p}
+                                </span>
+                              ))}
+                            </span>
+                          </div>
+                          <p className="text-xs leading-relaxed" style={{ color: C.gray }}>{t.use}</p>
+                        </Tag>
+                      );
+                    })}
                   </div>
                 </div>
               </FadeIn>
@@ -1808,7 +1826,7 @@ export default function App() {
               <Lightbulb size={19} style={{ color: C.amber }} /> 에듀테크 활용 Tip
             </h3>
           </FadeIn>
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
             {EDU_TIPS.map((t, i) => (
               <FadeIn key={t.stage} delay={i * 0.1}>
                 <div className="rounded-3xl p-6 h-full" style={{ background: "rgba(255,255,255,0.85)", border: `1.5px solid ${t.color}25` }}>
