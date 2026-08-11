@@ -219,48 +219,48 @@ const INITIAL_MATERIALS = {
    ============================================================ */
 const OUTPUTS = {
   jagi: [
-    { name: "감정 마인드맵", g: "4" },
-    { name: "강점 마인드맵", g: "5" },
-    { name: "감정 로봇 알고리즘", g: "4" },
-    { name: "표정 인식 감정 로봇", g: "4" },
-    { name: "강점 로봇 알고리즘", g: "5" },
-    { name: "그림 그리기 강점 로봇", g: "5" },
-    { name: "미주 AI 챗봇 상호작용", g: "5" },
-    { name: "감정 로봇 카드 뉴스", g: "4" },
-    { name: "강점 로봇 카드 뉴스", g: "5" },
+    { name: "감정 마인드맵", g: "4", img: "jagi-1" },
+    { name: "강점 마인드맵", g: "5", img: "jagi-2" },
+    { name: "감정 로봇 알고리즘", g: "4", img: "jagi-3" },
+    { name: "표정 인식 감정 로봇", g: "4", img: "jagi-4" },
+    { name: "강점 로봇 알고리즘", g: "5", img: "jagi-5" },
+    { name: "그림 그리기 강점 로봇", g: "5", img: "jagi-6" },
+    { name: "미주 AI 챗봇 상호작용", g: "5", img: "jagi-7" },
+    { name: "감정 로봇 카드 뉴스", g: "4", img: "jagi-8" },
+    { name: "강점 로봇 카드 뉴스", g: "5", img: "jagi-9" },
   ],
   gisul: [
-    { name: "우리 학교 문제 상황", g: "5" },
-    { name: "학교 문제 현장 조사", g: "5" },
-    { name: "보이스가이드봇 알고리즘", g: "5" },
-    { name: "장애인 안내봇 김로봇", g: "5" },
-    { name: "문제 해결 이미지 생성", g: "4" },
-    { name: "문제 해결 이미지 생성", g: "5" },
-    { name: "문제 해결 웹툰 만들기", g: "4" },
-    { name: "문제 해결 웹툰 만들기", g: "5" },
-    { name: "문제 해결 웹툰 공유하기", g: "45" },
+    { name: "우리 학교 문제 상황", g: "5", img: "gisul-1" },
+    { name: "학교 문제 현장 조사", g: "5", img: "gisul-2" },
+    { name: "보이스가이드봇 알고리즘", g: "5", img: "gisul-3" },
+    { name: "장애인 안내봇 김로봇", g: "5", img: "gisul-4" },
+    { name: "문제 해결 이미지 생성", g: "4", img: "gisul-5" },
+    { name: "문제 해결 이미지 생성", g: "5", img: "gisul-6" },
+    { name: "문제 해결 웹툰 만들기", g: "4", img: "gisul-7" },
+    { name: "문제 해결 웹툰 만들기", g: "5", img: "gisul-8" },
+    { name: "문제 해결 웹툰 공유하기", g: "45", img: "gisul-9" },
   ],
   jubyeon: [
-    { name: "우리 지역사회 문제 매핑", g: "5" },
-    { name: "문제 해결 메타버스 제작", g: "4" },
-    { name: "문제 해결 메타버스 제작", g: "5" },
-    { name: "우리 가정 분리배출봇", g: "4" },
-    { name: "우리 지역 환경 지킴이봇", g: "5" },
-    { name: "장애인 이동 보조봇", g: "5" },
-    { name: "집밥봇 캠페인 영상", g: "4" },
-    { name: "SDG 13번 캠페인 영상", g: "5" },
-    { name: "학교 뉴스 제작 및 확산", g: "45" },
+    { name: "우리 지역사회 문제 매핑", g: "5", img: "jubyeon-1" },
+    { name: "문제 해결 메타버스 제작", g: "4", img: "jubyeon-2" },
+    { name: "문제 해결 메타버스 제작", g: "5", img: "jubyeon-3" },
+    { name: "우리 가정 분리배출봇", g: "4", img: "jubyeon-4" },
+    { name: "우리 지역 환경 지킴이봇", g: "5", img: "jubyeon-5" },
+    { name: "장애인 이동 보조봇", g: "5", img: "jubyeon-6" },
+    { name: "집밥봇 캠페인 영상", g: "4", img: "jubyeon-7" },
+    { name: "SDG 13번 캠페인 영상", g: "5", img: "jubyeon-8" },
+    { name: "학교 뉴스 제작 및 확산", g: "45", img: "jubyeon-9" },
   ],
   mirae: [
-    { name: "나의 미래와 SDGs 연결", g: "4" },
-    { name: "나의 미래와 SDGs 연결", g: "5" },
-    { name: "AI 탐정 로봇 표현", g: "5" },
-    { name: "AI 의사 로봇 표현", g: "5" },
-    { name: "미래 반려 로봇 알고리즘", g: "4" },
-    { name: "AI 수의사 로봇 알고리즘", g: "5" },
-    { name: "미래 반려 로봇 구동", g: "4" },
-    { name: "미래 직업 로봇 구동", g: "5" },
-    { name: "공감문해 도서관", g: "45" },
+    { name: "나의 미래와 SDGs 연결", g: "4", img: "mirae-1" },
+    { name: "나의 미래와 SDGs 연결", g: "5", img: "mirae-2" },
+    { name: "AI 탐정 로봇 표현", g: "5", img: "mirae-3" },
+    { name: "AI 의사 로봇 표현", g: "5", img: "mirae-4" },
+    { name: "미래 반려 로봇 알고리즘", g: "4", img: "mirae-5" },
+    { name: "AI 수의사 로봇 알고리즘", g: "5", img: "mirae-6" },
+    { name: "미래 반려 로봇 구동", g: "4", img: "mirae-7" },
+    { name: "미래 직업 로봇 구동", g: "5", img: "mirae-8" },
+    { name: "공감문해 도서관", g: "45", img: "mirae-9" },
   ],
 };
 
@@ -826,6 +826,15 @@ export default function App() {
   const [materials, setMaterials] = useState(INITIAL_MATERIALS);
   const [activeTab, setActiveTab] = useState("jagi");
   const [activeProject, setActiveProject] = useState("jagi");
+  const [lightbox, setLightbox] = useState(null);
+
+  /* 확대 보기 중 Esc로 닫기 */
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e) => e.key === "Escape" && setLightbox(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightbox]);
   const [matForm, setMatForm] = useState(null);
   const [matSaving, setMatSaving] = useState(false);
   const fileInputRef = useRef(null);
@@ -1430,23 +1439,32 @@ export default function App() {
               <h4 className="font-extrabold mb-3 flex items-center gap-2">
                 <Sparkles size={17} style={{ color: p.color }} /> 학생 산출물
               </h4>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 mb-8">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
                 {(OUTPUTS[p.key] || []).map((o, i) => {
                   const b = GRADE_BADGE[o.g];
                   return (
-                    <div
+                    <button
                       key={`${o.name}-${i}`}
-                      className="rounded-xl px-3.5 py-3 flex items-center gap-2.5 transition-transform hover:-translate-y-0.5"
-                      style={{ background: "#fff", border: "1px solid #F1F5F9" }}
+                      onClick={() => setLightbox({ ...o, badge: b })}
+                      className="rounded-2xl overflow-hidden text-left transition-transform hover:-translate-y-1 group"
+                      style={{ background: "#fff", border: "1px solid #F1F5F9", boxShadow: "0 2px 10px rgba(15,23,42,0.05)" }}
                     >
-                      <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${b.color}12` }}>
-                        <Bot size={15} style={{ color: b.color }} />
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold truncate">{o.name}</p>
-                        <p className="text-[11px] font-semibold" style={{ color: b.color }}>{b.label}</p>
+                      <div className="relative" style={{ background: "#F1F5F9", aspectRatio: "396 / 228" }}>
+                        <img
+                          src={`/outputs/${o.img}.webp`}
+                          alt={`${o.name} (${b.label} 학생 산출물)`}
+                          loading="lazy"
+                          className="w-full h-full object-cover"
+                        />
+                        <span
+                          className="absolute top-2 left-2 text-[10px] font-black px-1.5 py-0.5 rounded text-white"
+                          style={{ background: b.color }}
+                        >
+                          {b.label}
+                        </span>
                       </div>
-                    </div>
+                      <p className="text-xs font-bold px-3 py-2.5 truncate group-hover:underline">{o.name}</p>
+                    </button>
                   );
                 })}
               </div>
@@ -2562,6 +2580,38 @@ export default function App() {
           </FadeIn>
         </div>
       </section>
+
+      {/* ================= 산출물 확대 보기 ================= */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 no-print"
+          style={{ background: "rgba(15,23,42,0.8)", backdropFilter: "blur(6px)" }}
+          onClick={() => setLightbox(null)}
+        >
+          <div className="w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black px-2 py-1 rounded text-white" style={{ background: lightbox.badge.color }}>
+                  {lightbox.badge.label}
+                </span>
+                <h4 className="font-extrabold text-white text-sm md:text-base">{lightbox.name}</h4>
+              </div>
+              <button onClick={() => setLightbox(null)} className="p-2 rounded-lg" style={{ background: "rgba(255,255,255,0.15)" }}>
+                <X size={18} color="#fff" />
+              </button>
+            </div>
+            <img
+              src={`/outputs/${lightbox.img}.webp`}
+              alt={`${lightbox.name} (${lightbox.badge.label} 학생 산출물)`}
+              className="w-full rounded-2xl"
+              style={{ background: "#fff" }}
+            />
+            <p className="text-center text-xs mt-3" style={{ color: "rgba(255,255,255,0.7)" }}>
+              학생 산출물 · 개인정보는 블라인드 처리되었습니다
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ================= 관리자 로그인 모달 (구글 계정) ================= */}
       {loginModal && (
