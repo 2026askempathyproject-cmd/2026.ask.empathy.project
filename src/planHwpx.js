@@ -78,9 +78,7 @@ const paraPrs = PARA_DEFS.map(
 /** 문단 생성 */
 const P = (text, charId = 0, paraId = 0) =>
   `<hp:p id="0" paraPrIDRef="${paraId}" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0">
-<hp:run charPrIDRef="${charId}"><hp:t>${X(text)}</hp:t></hp:run>
-<hp:linesegarray><hp:lineseg textpos="0" vertpos="0" vertsize="1000" textheight="1000"
- baseline="850" spacing="600" horzpos="0" horzsize="42520" flags="393216"/></hp:linesegarray></hp:p>`;
+<hp:run charPrIDRef="${charId}"><hp:t>${X(text)}</hp:t></hp:run></hp:p>`;
 
 /** 본문(section0.xml) */
 function sectionXml(plan) {
@@ -97,9 +95,7 @@ function sectionXml(plan) {
  border="SHOW_ALL" fill="SHOW_ALL" hideFirstPageNum="0" hideFirstEmptyLine="0" showLineNumber="0"/>
 <hp:pagePr landscape="WIDELY" width="59528" height="84188" gutterType="LEFT_ONLY">
 <hp:margin header="4252" footer="4252" gutter="0" left="5669" right="5669" top="5669" bottom="4252"/>
-</hp:pagePr></hp:secPr></hp:run>
-<hp:linesegarray><hp:lineseg textpos="0" vertpos="0" vertsize="1000" textheight="1000"
- baseline="850" spacing="600" horzpos="0" horzsize="42520" flags="393216"/></hp:linesegarray></hp:p>`
+</hp:pagePr></hp:secPr></hp:run></hp:p>`
   );
 
   B.push(P(plan.projectTitle, 1));
