@@ -75,10 +75,40 @@ const paraPrs = PARA_DEFS.map(
  connect="0" ignoreMargin="0"/></hh:paraPr>`
 ).join("");
 
-/** 문단 생성 */
-const P = (text, charId = 0, paraId = 0) =>
-  `<hp:p id="0" paraPrIDRef="${paraId}" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0">
-<hp:run charPrIDRef="${charId}"><hp:t>${X(text)}</hp:t></hp:run></hp:p>`;
+/* 본문 영역 너비(HWPUNIT) = 용지 59528 − 좌우 여백 5669×2 */
+const TEXT_WIDTH = 48190;
+
+/**
+ * 문단 생성
+ *
+ * 한글은 linesegarray(줄 배치 정보)를 그대로 신뢰해 렌더링합니다.
+ * 이 정보가 없거나 한 줄만 있으면 긴 문장이 한 줄에 겹쳐 찍히므로,
+ * 글자 크기와 본문 너비로 줄 수를 계산해 줄마다 항목을 만들어 줍니다.
+ */
+const P = (text, charId = 0, paraId = 0) => {
+  const h = CHAR_DEFS[charId]?.sz ?? 1000;      // 글자 높이
+  const indent = PARA_DEFS[paraId]?.indent ?? 0;
+  const width = TEXT_WIDTH - indent;
+
+  // 한글 1자 ≈ 글자 높이, 영문·숫자·공백 ≈ 0.5자로 환산
+  const units = [...String(text)].reduce(
+    (n, c) => n + (/[ㄱ-힝]/.test(c) ? 1 : 0.55),
+    0
+  );
+  const perLine = Math.max(1, Math.floor(width / h));
+  const lines = Math.max(1, Math.ceil(units / perLine));
+  const lineH = Math.round(h * 1.6);            // 줄 간격 160%
+
+  const segs = Array.from({ length: lines }, (_, i) =>
+    `<hp:lineseg textpos="${Math.round(i * perLine)}" vertpos="${i * lineH}" vertsize="${h}"` +
+    ` textheight="${h}" baseline="${Math.round(h * 0.85)}" spacing="${Math.round(h * 0.6)}"` +
+    ` horzpos="0" horzsize="${width}" flags="393216"/>`
+  ).join("");
+
+  return `<hp:p id="0" paraPrIDRef="${paraId}" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0">
+<hp:run charPrIDRef="${charId}"><hp:t>${X(text)}</hp:t></hp:run>
+<hp:linesegarray>${segs}</hp:linesegarray></hp:p>`;
+};
 
 /** 본문(section0.xml) */
 function sectionXml(plan) {
