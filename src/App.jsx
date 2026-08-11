@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import { firebaseReady, db, auth } from "./firebase.js";
 import { buildPlanHtml, planToText, safeFileName } from "./planDocument.js";
+import { buildPlanDocx } from "./planDocx.js";
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc,
 } from "firebase/firestore";
@@ -968,14 +969,19 @@ export default function App() {
     }
   };
 
-  /** 2) 한글(HWP)·워드에서 열리는 문서로 저장 */
-  const downloadDoc = () => {
-    const html = buildPlanHtml(genResult);
-    saveBlob(
-      new Blob(["﻿" + html], { type: "application/msword;charset=utf-8" }),
-      `${planFileName()}.doc`
-    );
-    setExportOpen(false);
+  /** 2) 한글(HWP)·워드용 .docx 파일로 저장 */
+  const [docxBusy, setDocxBusy] = useState(false);
+  const downloadDocx = async () => {
+    setDocxBusy(true);
+    try {
+      const blob = await buildPlanDocx(genResult);
+      saveBlob(blob, `${planFileName()}.docx`);
+      setExportOpen(false);
+    } catch (e) {
+      alert("문서 생성에 실패했습니다: " + (e?.message || e));
+    } finally {
+      setDocxBusy(false);
+    }
   };
 
   /** 3) PDF 저장 / 인쇄 — 지도안만 담은 새 창을 열어 인쇄 */
@@ -2613,11 +2619,11 @@ export default function App() {
                   primary: true,
                 },
                 {
-                  onClick: downloadDoc,
+                  onClick: downloadDocx,
                   icon: FileText,
                   color: C.blue,
-                  title: "한글(HWP) · 워드로 저장",
-                  desc: "한글과 워드에서 바로 열어 수정할 수 있는 .doc 파일",
+                  title: docxBusy ? "문서 만드는 중..." : "한글(HWP) · 워드로 저장",
+                  desc: "한글과 워드에서 바로 열어 수정할 수 있는 .docx 파일",
                 },
                 {
                   onClick: downloadTxt,
