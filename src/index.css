@@ -2,6 +2,8 @@
 
 html {
   scroll-behavior: smooth;
+  /* 발표 모드에서 글자 크기가 바뀔 때 부드럽게 */
+  transition: font-size 0.25s ease;
 }
 
 /*
@@ -13,5 +15,56 @@ html {
 @media print {
   .no-print {
     display: none !important;
+  }
+}
+
+/* ─────────────────────────────────────────────
+   발표 모드 — 빔프로젝터 가독성 우선
+   ───────────────────────────────────────────── */
+
+/* 유리 카드의 옅은 반투명은 프로젝터에서 뭉개지므로 불투명하게 */
+.present [style*="backdrop-filter"],
+.present [style*="backdropFilter"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 본문 가독성: 자간·행간 소폭 확대 */
+.present body {
+  letter-spacing: -0.01em;
+}
+
+/* 얇은 글씨를 한 단계 두껍게 */
+.present p,
+.present li,
+.present td {
+  font-weight: 450;
+}
+
+/* 아주 작은 보조 텍스트는 최소 크기 보장 */
+.present .text-\[10px\],
+.present .text-\[11px\] {
+  font-size: 0.78rem !important;
+}
+
+/* 스크롤 위치 보정 — 고정 헤더에 제목이 가리지 않도록 */
+section {
+  scroll-margin-top: 4.5rem;
+}
+
+/* 발표 모드 진입 안내는 잠시 보였다가 사라짐 */
+@keyframes fadeOutHint {
+  0%, 70% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(8px); pointer-events: none; }
+}
+
+/* 움직임 최소화 설정을 존중 (구형 노트북·접근성) */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }

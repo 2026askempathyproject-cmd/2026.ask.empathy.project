@@ -60,7 +60,7 @@ import {
   ExternalLink, Settings, Loader2, Rocket, TrendingUp, ChevronRight,
   Layers, Wand2, ShieldCheck, RefreshCw, GraduationCap, Menu, Check,
   MonitorSmartphone, School, Earth, Compass, Download, File, Target,
-  ClipboardCheck, AlertTriangle, BadgeCheck, LogOut, Printer
+  ClipboardCheck, AlertTriangle, BadgeCheck, LogOut, Printer, Presentation
 } from "lucide-react";
 
 /* ============================================================
@@ -72,7 +72,8 @@ const C = {
   amber: "#F59E0B",
   emerald: "#10B981",
   ink: "#0F172A",
-  gray: "#64748B",
+  gray: "#475569",   // 본문 보조 (프로젝터 대비 강화)
+  muted: "#64748B",  // 각주·부가 설명 (기존 #94A3B8에서 상향)
 };
 
 const glass = {
@@ -721,6 +722,22 @@ export default function App() {
   const [editMode, setEditMode] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
+  /* ---------- 발표 모드 ----------
+     루트 글자 크기를 키우면 rem 기반 스타일이 전체적으로 확대됩니다.
+     빔프로젝터에서 뒷자리까지 읽히도록 하고, 관리자 UI는 감춥니다. */
+  const [presentMode, setPresentMode] = useState(false);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.fontSize = presentMode ? "19px" : "";
+    root.classList.toggle("present", presentMode);
+    if (presentMode) setEditMode(false);
+    return () => {
+      root.style.fontSize = "";
+      root.classList.remove("present");
+    };
+  }, [presentMode]);
+
   /* ---------- 관리자 인증 (Firebase Auth · 구글 로그인) ---------- */
   const [user, setUser] = useState(null);
   const [loginModal, setLoginModal] = useState(null); // null | {error}
@@ -1044,6 +1061,36 @@ export default function App() {
     ["generator", "AI 기획자"],
   ];
 
+  /* 발표 중 키보드로 섹션 이동 (← → PageUp/PageDown, Esc 종료) */
+  useEffect(() => {
+    if (!presentMode) return;
+    const onKey = (e) => {
+      const tag = (e.target?.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select") return;
+      if (e.key === "Escape") return setPresentMode(false);
+
+      const dir =
+        e.key === "ArrowRight" || e.key === "PageDown" ? 1 :
+        e.key === "ArrowLeft" || e.key === "PageUp" ? -1 : 0;
+      if (!dir) return;
+      e.preventDefault();
+
+      const ids = ["hero", ...navItems.map(([id]) => id)];
+      const tops = ids.map((id) => {
+        const el = document.getElementById(id);
+        return el ? el.getBoundingClientRect().top : Infinity;
+      });
+      // 현재 화면 상단에 가장 가까운 섹션
+      let cur = 0;
+      tops.forEach((t, i) => { if (t <= 80) cur = i; });
+      const next = Math.min(ids.length - 1, Math.max(0, cur + dir));
+      document.getElementById(ids[next])?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [presentMode]);
+
+
   return (
     <div
       className="min-h-screen w-full"
@@ -1082,9 +1129,27 @@ export default function App() {
           </nav>
 
           <div className="flex items-center gap-2">
+            {/* 발표 모드 토글 */}
+            <button
+              onClick={() => setPresentMode((v) => !v)}
+              title={presentMode ? "발표 모드 끄기 (Esc)" : "발표 모드 — 글자를 키우고 관리 버튼을 숨깁니다"}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs md:text-sm font-bold transition-all"
+              style={{
+                background: presentMode ? C.ink : "rgba(255,255,255,0.9)",
+                color: presentMode ? "#fff" : C.gray,
+                border: `1px solid ${presentMode ? C.ink : "#E2E8F0"}`,
+                boxShadow: presentMode ? "0 4px 14px rgba(15,23,42,0.35)" : "0 2px 8px rgba(15,23,42,0.08)",
+              }}
+            >
+              <Presentation size={15} />
+              <span className="hidden sm:inline">{presentMode ? "발표 중" : "발표 모드"}</span>
+            </button>
+
             <button
               onClick={toggleEdit}
-              className="flex items-center gap-2 px-3 py-2 rounded-full text-xs md:text-sm font-bold transition-all"
+              className={`items-center gap-2 px-3 py-2 rounded-full text-xs md:text-sm font-bold transition-all ${
+                presentMode ? "hidden" : "flex"
+              }`}
               style={{
                 background: editMode ? C.coral : "rgba(255,255,255,0.9)",
                 color: editMode ? "#fff" : C.gray,
@@ -1099,7 +1164,7 @@ export default function App() {
               )}
               {loggingIn ? "로그인 중..." : editMode ? "Edit Mode ON" : "관리자 모드"}
             </button>
-            {firebaseReady && user && (
+            {firebaseReady && user && !presentMode && (
               <button
                 onClick={doLogout}
                 title="로그아웃"
@@ -1210,7 +1275,7 @@ export default function App() {
                     <TrendingUp size={18} /> {num}
                   </div>
                   <p className="text-xs mt-1 font-semibold" style={{ color: C.gray }}>{label}</p>
-                  <p className="text-[11px] mt-0.5" style={{ color: "#94A3B8" }}>{sub}</p>
+                  <p className="text-[11px] mt-0.5" style={{ color: C.muted }}>{sub}</p>
                 </div>
               ))}
             </div>
@@ -1571,7 +1636,7 @@ export default function App() {
                       <h3 className="text-lg font-extrabold leading-tight">{r.name}</h3>
                     </div>
                   </div>
-                  <p className="text-xs mb-4" style={{ color: "#94A3B8" }}>{r.sub}</p>
+                  <p className="text-xs mb-4" style={{ color: C.muted }}>{r.sub}</p>
 
                   {[
                     ["4학년", r.g4],
@@ -1583,7 +1648,7 @@ export default function App() {
                       <div key={grade} className="mb-3 last:mb-0">
                         <div className="flex items-center justify-between mb-1.5">
                           <span className="text-xs font-bold" style={{ color: C.ink }}>{grade}</span>
-                          <span className="text-xs font-semibold" style={{ color: ns ? "#94A3B8" : r.color }}>
+                          <span className="text-xs font-semibold" style={{ color: ns ? C.muted : r.color }}>
                             t={g.t}
                             <sup>{g.sig === "n.s." ? "" : g.sig}</sup>
                             {ns && <span className="ml-1">n.s.</span>}
@@ -1599,7 +1664,7 @@ export default function App() {
                         </div>
                         <div className="flex gap-2 mt-1.5">
                           {g.delta.map((d, j) => (
-                            <span key={j} className="text-[11px] font-semibold px-1.5 py-0.5 rounded" style={{ background: `${ns ? "#94A3B8" : r.color}10`, color: ns ? "#94A3B8" : r.color }}>
+                            <span key={j} className="text-[11px] font-semibold px-1.5 py-0.5 rounded" style={{ background: `${ns ? C.muted : r.color}12`, color: ns ? C.muted : r.color }}>
                               {d}
                             </span>
                           ))}
@@ -1618,7 +1683,7 @@ export default function App() {
                 사전–사후 평균이 <b style={{ color: C.ink }}>전 영역에서 상승</b>했으며, 4학년은 디지털 문해력·디지털 시민성에서,
                 5학년은 <b style={{ color: C.ink }}>세 역량 모두</b>에서 통계적으로 유의미한 향상이 나타났습니다.
               </p>
-              <p className="text-xs shrink-0" style={{ color: "#94A3B8" }}>
+              <p className="text-xs shrink-0" style={{ color: C.muted }}>
                 * p&lt;.05 &nbsp; ** p&lt;.01 &nbsp; n.s. 유의하지 않음 &nbsp;·&nbsp; d = Cohen's d<sub>z</sub>
               </p>
             </div>
@@ -1670,7 +1735,7 @@ export default function App() {
           </div>
 
           <FadeIn delay={0.2}>
-            <p className="text-xs text-center mt-6" style={{ color: "#94A3B8" }}>
+            <p className="text-xs text-center mt-6" style={{ color: C.muted }}>
               검증 도구 · 디지털 리터러시 수준측정 연구(KERIS, 2026), 초등학생 사회정서역량 측정도구(2025),
               자기주도학습 능력척도(2023) · 5단계 리커트 척도
             </p>
@@ -1848,7 +1913,7 @@ export default function App() {
             ))}
           </div>
           <FadeIn delay={0.1}>
-            <p className="text-xs mb-2" style={{ color: "#94A3B8" }}>
+            <p className="text-xs mb-2" style={{ color: C.muted }}>
               ① 자기와 기술 연결하기 · ② 기술과 주변 연결하기 · ③ 주변과 세상 연결하기 · ④ 세상도 자기와 연결하기
             </p>
           </FadeIn>
@@ -2072,7 +2137,7 @@ export default function App() {
                       <Check size={12} /> 이동할 주소: {normalizeUrl(appForm.link)}
                     </p>
                   ) : (
-                    <p className="mt-1.5 text-xs" style={{ color: "#94A3B8" }}>
+                    <p className="mt-1.5 text-xs" style={{ color: C.muted }}>
                       주소를 입력하면 카드 전체를 눌러 바로 이동할 수 있습니다.
                     </p>
                   )}
@@ -2292,7 +2357,7 @@ export default function App() {
                         value={matForm.fileUrl || ""}
                         onChange={(e) => setMatForm({ ...matForm, fileUrl: e.target.value })}
                       />
-                      <p className="mt-1.5 text-xs" style={{ color: "#94A3B8" }}>
+                      <p className="mt-1.5 text-xs" style={{ color: C.muted }}>
                         구글 드라이브에 올린 뒤 공유 설정을 '링크가 있는 모든 사용자'로 바꾸고 링크를 붙여넣으세요.
                       </p>
                     </>
@@ -2310,7 +2375,7 @@ export default function App() {
                           "PC에서 파일 선택 (클릭)"
                         )}
                       </label>
-                      <p className="mt-1.5 text-xs" style={{ color: "#94A3B8" }}>
+                      <p className="mt-1.5 text-xs" style={{ color: C.muted }}>
                         PDF·한글·오피스 파일, 3MB 이하. 더 큰 파일은 '링크 등록'을 이용하세요.
                       </p>
                     </>
@@ -2588,6 +2653,22 @@ export default function App() {
         </div>
       </section>
 
+      {/* ================= 발표 모드 안내 (좌하단, 잠시 후 사라짐) ================= */}
+      {presentMode && (
+        <div
+          className="fixed bottom-5 left-5 z-40 px-4 py-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 no-print"
+          style={{
+            background: "rgba(15,23,42,0.88)",
+            color: "#fff",
+            boxShadow: "0 8px 24px rgba(15,23,42,0.3)",
+            animation: "fadeOutHint 6s forwards",
+          }}
+        >
+          <Presentation size={14} />
+          <span>← → 섹션 이동 · Esc 발표 모드 종료</span>
+        </div>
+      )}
+
       {/* ================= 지도안 내보내기 모달 ================= */}
       {exportOpen && genResult && (
         <div
@@ -2664,7 +2745,7 @@ export default function App() {
               ))}
             </div>
 
-            <p className="text-xs mt-5 text-center leading-relaxed" style={{ color: "#94A3B8" }}>
+            <p className="text-xs mt-5 text-center leading-relaxed" style={{ color: C.muted }}>
               어떤 방식으로 저장하든 공·감·문·해 단계 표시와 성취기준이 함께 담깁니다.
             </p>
           </div>
