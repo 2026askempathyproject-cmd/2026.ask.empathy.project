@@ -182,6 +182,88 @@ const INITIAL_MATERIALS = {
 };
 
 /* ============================================================
+   결론 · 일반화 · 제언 (최종 보고서 Ⅴ장 기준)
+   ============================================================ */
+const CONCLUSIONS = [
+  {
+    n: "01", color: C.coral, icon: Settings,
+    title: "프로젝트를 위한 환경을 조성하고 프로그램을 개발·실행하였다",
+    text: "교과 성취기준(CK)과 개념 기반 탐구 학습(PK)을 유기적으로 융합한 TPACK 기반 AI·에듀테크(TK) 스캐폴딩을 제공하여, 학생의 인지적·정의적 성장을 이끄는 하이브리드 교육 환경을 조성하고 디지털 포트폴리오 등 학습 데이터로 효과성을 확인했습니다.",
+  },
+  {
+    n: "02", color: C.amber, icon: TrendingUp,
+    title: "주도적 ASK 미래 역량을 함양하였다",
+    text: "양적 검증에서 항목별 유의미한 상승이 나타났고, 특히 디지털 문해력과 디지털 시민성이 향상되었습니다. 질적 검증에서도 데이터 분석·협력적 소통·창의적 표현에 대한 긍정적 응답이 확인되었습니다.",
+  },
+  {
+    n: "03", color: C.blue, icon: Share2,
+    title: "피지컬 AI 기반 수업의 사례로 일반화에 기여하였다",
+    text: "학생들은 공감으로 열기–감각으로 익히기–문해로 짓기–해결로 잇기의 과정을 통해 주도적인 삶의 가치를 깨달았으며, 수업 사례를 교내·외 및 지역사회에 공유해 일반화된 사례로서의 활용 가능성을 보여주었습니다.",
+  },
+];
+
+const GENERALIZATION = [
+  {
+    icon: Layers, color: C.coral, title: "피지컬 AI 융합 나선형 교육과정",
+    text: "3~4학년군과 5~6학년군에 함께 적용해 역량 신장 효과와 발달 단계별 차이를 확인했으므로 초등 중·고학년에 적극 활용 가능하며, 중등 교육과정까지 확장할 수 있습니다.",
+  },
+  {
+    icon: BookOpen, color: C.blue, title: "공감 능력 및 디지털 문해력 향상 수업",
+    text: "학생 스스로 데이터를 수집·분석·재구성하는 4단계 탐구 과정을 모듈화하여, AI·에듀테크에 익숙하지 않은 교사도 쉽게 적용할 수 있는 유연한 수업 모델입니다.",
+  },
+  {
+    icon: Globe2, color: C.emerald, title: "디지털 시민성 · SDGs 문제 해결 수업",
+    text: "개인의 내면 데이터를 지역사회의 전 지구적 과제(SDGs)와 연계해 AI 로봇으로 표현하는 경험을 제공하여, 소버린 AI 기반 주권적 시민성 교육 사례로 활용됩니다.",
+  },
+  {
+    icon: Share2, color: C.amber, title: "교원 연수 및 사례 나눔을 통한 공유",
+    text: "학생 산출물, 교수·학습 과정안, 맞춤형 피지컬 AI 학습 웹앱을 직접 개발한 통합 웹사이트에 공유하고 확산하는 사례가 됩니다.",
+  },
+];
+
+const PROPOSALS = [
+  {
+    n: "첫째", color: C.coral,
+    title: "피지컬 AI 기반 융합 수업을 위한 다양한 교수·학습 자료 개발이 필요하다",
+    text: "AI와 로봇 관련 성취기준을 바탕으로 융합 수업에 적합한 디지털 도구 활용 가이드와 수준별 지원 자료를 개발·보급하는 지원이 필요합니다.",
+  },
+  {
+    n: "둘째", color: C.blue,
+    title: "데이터 주권 확립을 위한 소버린 AI 교육 실천이 확대되어야 한다",
+    text: "미래 세대가 알고리즘의 수동적 소비자로 전락하지 않도록, 스스로 지역사회의 데이터를 수집하고 공동체 문제를 해결하는 주권적 AI 설계 경험이 지속적으로 지원되어야 합니다.",
+  },
+  {
+    n: "셋째", color: C.emerald,
+    title: "학습 궤적을 종단적으로 누적·해석하는 AI 기반 과정 중심 평가 시스템이 요구된다",
+    text: "단발성 산출물 평가를 넘어 학생의 성장 추이와 창작 결과물을 포트폴리오로 누적 기록하여, 학습자에게 맞춤형 진로 피드백을 제공하는 시스템이 필요합니다.",
+  },
+];
+
+/** 선행연구 대비 본 연구의 차별점 (보고서 '프로젝트 적용') */
+const DIFFERENTIATORS = [
+  {
+    icon: RefreshCw, color: C.coral, title: "나선형 주제 확장",
+    text: "학습 주제를 '자기(자아)→학교(공간)→세상(사회)→미래(진로)'로 재구조화하여, 초기 탐색된 자아 데이터(Seed Data)가 최종 진로 설계(Harvest Data)로 이어지는 선순환 구조를 만들었습니다.",
+  },
+  {
+    icon: MonitorSmartphone, color: C.amber, title: "매체 활용의 확장",
+    text: "디지털 매체를 '가상 세계→피지컬 AI→발표 자료→디지털 포트폴리오'로 점차 확장합니다. 가상의 알고리즘을 물리적 현실에서 구동하며 고차원적 AI·디지털 리터러시를 완성합니다.",
+  },
+  {
+    icon: ShieldCheck, color: C.blue, title: "TPACK 기반 프로젝트",
+    text: "AI·에듀테크의 단순 소비를 지양하고, 교과 핵심 아이디어를 중심으로 생성형 AI와 피지컬 AI를 프로젝트의 적재적소에 배치하여 소버린 AI를 포함한 융합 역량(ASK)을 이끌어냅니다.",
+  },
+];
+
+const PRIOR_STUDIES = [
+  { who: "한국교육학술정보원 (2026)", topic: "초·중학생 AI·디지털 리터러시 수준 측정 프레임워크", point: "단순 기능 숙련을 넘어 AI를 능동적인 '생각 파트너'로 활용하는 진단 체계 및 평가 루브릭 설계의 기준점을 제공" },
+  { who: "김소연 (2025, 연구대회)", topic: "디지털 감수성 기반 감성지행 프로젝트", point: "거시적 사회 문제(SDGs)를 일상의 맥락으로 가져와 실천하는 'Seed to Harvest' 데이터 선순환 구조와 소버린 AI 교육의 방향성 제시" },
+  { who: "이대형 (2025, 연구대회)", topic: "문해력 3.0 탐구수업으로 주도성 기르기", point: "인지·정서 통합 탐구가 주도성 함양의 핵심임을 입증하며, 본 연구의 4단계 프로젝트 모형 설계와 다각적 검증 체계에 타당성 부여" },
+  { who: "김각영 · 조민국 · 김귀훈 (2025)", topic: "협동학습 기반 피지컬 컴퓨팅 AI 융합 수업", point: "가상의 알고리즘을 물리적 구동으로 구현하는 'Sim-to-Real 하이브리드 환경'이 협력적 소통 역량 향상에 기여함을 학술적으로 입증" },
+  { who: "한국교육학술정보원 (2023)", topic: "교육과정 연계 디지털 리터러시 교육 가이드라인", point: "교과 핵심 개념(PCK)과 디지털 기술을 융합하는 TPACK 기반 개념 중심 탐구 학습의 국가 수준 교육과정 연계성을 뒷받침" },
+];
+
+/* ============================================================
    교사용 실행 가이드 (최종 보고서 연구과제 1·3 기준)
    ============================================================ */
 const GUIDE_STEPS = [
@@ -768,6 +850,7 @@ export default function App() {
     ["projects", "프로젝트"],
     ["results", "연구 결과"],
     ["guide", "적용 가이드"],
+    ["conclusion", "결론·제언"],
     ["materials", "자료실"],
     ["generator", "AI 기획자"],
   ];
@@ -1489,6 +1572,128 @@ export default function App() {
               </button>
             </div>
           </FadeIn>
+        </div>
+      </section>
+
+      {/* ================= 결론 · 일반화 · 제언 ================= */}
+      <section id="conclusion" className="py-20 px-4">
+        <div className="max-w-6xl mx-auto">
+          <FadeIn>
+            <SectionTitle
+              badge="CONCLUSION"
+              title="결론과 제언"
+              sub="연구를 통해 확인한 결론, 선행연구와의 차별점, 그리고 현장에 남기는 세 가지 제언입니다."
+              color={C.blue}
+            />
+          </FadeIn>
+
+          {/* 결론 3 */}
+          <div className="grid md:grid-cols-3 gap-5 mb-14">
+            {CONCLUSIONS.map((c, i) => (
+              <FadeIn key={c.n} delay={i * 0.1}>
+                <div className="rounded-3xl p-6 h-full relative overflow-hidden" style={glass}>
+                  <span className="absolute -top-3 -right-1 text-6xl font-black" style={{ color: `${c.color}12` }}>{c.n}</span>
+                  <span className="w-11 h-11 rounded-2xl flex items-center justify-center mb-4" style={{ background: `${c.color}14` }}>
+                    <c.icon size={20} style={{ color: c.color }} />
+                  </span>
+                  <h3 className="font-extrabold text-base mb-2 leading-snug relative">{c.title}</h3>
+                  <p className="text-sm leading-relaxed relative" style={{ color: C.gray }}>{c.text}</p>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+
+          {/* 선행연구와의 차별점 */}
+          <FadeIn>
+            <h3 className="text-xl font-extrabold mb-2 flex items-center gap-2">
+              <Sparkles size={19} style={{ color: C.coral }} /> 선행연구와의 차별점
+            </h3>
+            <p className="text-sm mb-5" style={{ color: C.gray }}>
+              기존 연구가 확인한 지점을 딛고, 본 연구가 새롭게 시도한 세 가지입니다.
+            </p>
+          </FadeIn>
+          <div className="grid md:grid-cols-3 gap-5 mb-5">
+            {DIFFERENTIATORS.map((d, i) => (
+              <FadeIn key={d.title} delay={i * 0.1}>
+                <div className="rounded-3xl p-6 h-full" style={{ background: "rgba(255,255,255,0.9)", border: `1.5px solid ${d.color}25` }}>
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <span className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${d.color}14` }}>
+                      <d.icon size={19} style={{ color: d.color }} />
+                    </span>
+                    <h4 className="font-extrabold text-base">{d.title}</h4>
+                  </div>
+                  <p className="text-sm leading-relaxed" style={{ color: C.gray }}>{d.text}</p>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+
+          {/* 선행연구 목록 (펼치기) */}
+          <FadeIn delay={0.1}>
+            <details className="rounded-2xl overflow-hidden mb-14" style={{ border: "1px solid #E2E8F0" }}>
+              <summary className="px-5 py-3.5 cursor-pointer font-extrabold text-sm flex items-center gap-2 select-none" style={{ background: "#F8FAFC" }}>
+                <BookOpen size={16} style={{ color: C.blue }} />
+                분석한 선행연구 5건 보기
+              </summary>
+              <div className="p-5 flex flex-col gap-3" style={{ background: "#fff" }}>
+                {PRIOR_STUDIES.map((s) => (
+                  <div key={s.who} className="rounded-xl p-4" style={{ background: "#F8FAFC" }}>
+                    <div className="flex flex-wrap items-baseline gap-2 mb-1">
+                      <span className="text-xs font-black" style={{ color: C.blue }}>{s.who}</span>
+                      <span className="text-xs font-semibold" style={{ color: C.ink }}>{s.topic}</span>
+                    </div>
+                    <p className="text-xs leading-relaxed" style={{ color: C.gray }}>
+                      <b style={{ color: C.coral }}>시사점 </b>{s.point}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </details>
+          </FadeIn>
+
+          {/* 일반화 가능성 */}
+          <FadeIn>
+            <h3 className="text-xl font-extrabold mb-5 flex items-center gap-2">
+              <Globe2 size={19} style={{ color: C.emerald }} /> 일반화 가능성
+            </h3>
+          </FadeIn>
+          <div className="grid md:grid-cols-2 gap-4 mb-14">
+            {GENERALIZATION.map((g, i) => (
+              <FadeIn key={g.title} delay={i * 0.08}>
+                <div className="rounded-3xl p-6 h-full flex gap-4" style={glass}>
+                  <span className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ background: `${g.color}14` }}>
+                    <g.icon size={20} style={{ color: g.color }} />
+                  </span>
+                  <div>
+                    <h4 className="font-extrabold text-base mb-1.5">{g.title}</h4>
+                    <p className="text-sm leading-relaxed" style={{ color: C.gray }}>{g.text}</p>
+                  </div>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+
+          {/* 제언 */}
+          <FadeIn>
+            <h3 className="text-xl font-extrabold mb-5 flex items-center gap-2">
+              <Lightbulb size={19} style={{ color: C.amber }} /> 제언
+            </h3>
+          </FadeIn>
+          <div className="flex flex-col gap-4">
+            {PROPOSALS.map((p, i) => (
+              <FadeIn key={p.n} delay={i * 0.08} y={20}>
+                <div className="rounded-3xl p-6 flex flex-col md:flex-row gap-4" style={{ background: "rgba(255,255,255,0.9)", border: `1.5px solid ${p.color}22` }}>
+                  <span className="px-3 py-1.5 rounded-full text-xs font-black text-white h-fit shrink-0" style={{ background: p.color }}>
+                    {p.n}
+                  </span>
+                  <div>
+                    <h4 className="font-extrabold text-base mb-1.5 leading-snug">{p.title}</h4>
+                    <p className="text-sm leading-relaxed" style={{ color: C.gray }}>{p.text}</p>
+                  </div>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
         </div>
       </section>
 
