@@ -3,3 +3,35 @@
 html {
   scroll-behavior: smooth;
 }
+
+/* ── 인쇄(PDF 저장) 시 AI 기획자 결과만 깔끔하게 출력 ── */
+@media print {
+  body {
+    background: #fff !important;
+  }
+  /* 인쇄 대상 외 모든 섹션 숨김 */
+  body > div > header,
+  body > div > footer,
+  body > div > section:not(.print-area) {
+    display: none !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-area {
+    padding: 0 !important;
+  }
+  /* 배경/그림자 제거해 잉크 절약 및 가독성 확보 */
+  .print-area * {
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+  }
+  /* 단계 카드가 페이지 중간에서 잘리지 않도록 */
+  .print-area .rounded-2xl {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  @page {
+    margin: 15mm;
+  }
+}

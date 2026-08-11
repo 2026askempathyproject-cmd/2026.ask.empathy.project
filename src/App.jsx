@@ -57,7 +57,7 @@ import {
   ExternalLink, Settings, Loader2, Rocket, TrendingUp, ChevronRight,
   Layers, Wand2, ShieldCheck, RefreshCw, GraduationCap, Menu, Check,
   MonitorSmartphone, School, Earth, Compass, Download, File, Target,
-  ClipboardCheck, AlertTriangle, BadgeCheck, LogOut
+  ClipboardCheck, AlertTriangle, BadgeCheck, LogOut, Printer
 } from "lucide-react";
 
 /* ============================================================
@@ -130,6 +130,38 @@ const dataService = {
 /* ============================================================
    AI 기획자 — 서버 API 호출 (키는 서버에만 존재)
    ============================================================ */
+/** 생성된 지도안을 텍스트로 변환 (복사·저장용) */
+function planToText(plan) {
+  const lines = [
+    `[피지컬 AI 기반 공감문해 프로젝트 수업 지도안]`,
+    ``,
+    `프로젝트명: ${plan.projectTitle}`,
+    `대상 학년: ${plan.gradeLabel} (${plan.gradeBand}군)`,
+    `수업 소재: ${plan.keyword}`,
+    ``,
+    `[개요]`,
+    plan.overview,
+    ``,
+  ];
+  plan.stages.forEach((s, i) => {
+    lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━`);
+    lines.push(`STEP ${i + 1}. ${s.stage}${s.label} — ${s.title}`);
+    lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━`);
+    lines.push(`▷ 학습 목표: ${s.goal}`);
+    lines.push(`▷ 주요 활동`);
+    (s.activities || []).forEach((a) => lines.push(`   · ${a}`));
+    lines.push(`▷ 관련 성취기준`);
+    (s.standards || []).forEach((st) => lines.push(`   [${st.code}] ${st.description}`));
+    if (s.tools) lines.push(`▷ 추천 에듀테크: ${s.tools}`);
+    if (s.assessment) lines.push(`▷ 과정중심평가: ${s.assessment}`);
+    if (s.ask) lines.push(`▷ 중점 ASK 역량: ${s.ask}`);
+    lines.push(``);
+  });
+  lines.push(`※ 2022 개정 교육과정 성취기준을 근거로 AI가 생성한 초안입니다.`);
+  lines.push(`   피지컬 AI 기반 공감문해 프로젝트 · AI 기획자`);
+  return lines.join("\n");
+}
+
 async function generateProjectPlan({ grade, keyword }) {
   const res = await fetch("/api/generate", {
     method: "POST",
@@ -180,6 +212,53 @@ const INITIAL_MATERIALS = {
     { id: 42, name: "미래 반려·직업 로봇 제안 보고서", type: "보고서", fileName: "project4_report.pdf", fileSize: "1.7MB" },
   ],
 };
+
+/* ============================================================
+   AI·에듀테크 (최종 보고서 '연구과제 1 – 다. AI·에듀테크 선정' 기준)
+   ❶ 자기 ❷ 학교 ❸ 세상 ❹ 미래
+   ============================================================ */
+const EDUTECH_GROUPS = [
+  {
+    type: "AI 코스웨어", color: C.coral, icon: Cpu,
+    tools: [
+      { name: "심스페이스", use: "학생의 감정 상태를 기록하고 분석하는 맞춤형 마음 데이터 코스웨어", proj: ["①", "④"] },
+      { name: "자작자작", use: "학생이 쓴 글을 분석하고 주도적 고쳐쓰기를 돕는 AI 글쓰기 튜터", proj: ["①", "④"] },
+      { name: "구글 클래스룸", use: "과제 안내, 산출물 누적 관리, 형성 평가를 위한 학습 관리 플랫폼", proj: ["전체"] },
+    ],
+  },
+  {
+    type: "데이터 수집 및 분석", color: C.blue, icon: TrendingUp,
+    tools: [
+      { name: "멘티미터", use: "학급 및 학교의 문제 상황 투표 및 핵심 키워드 데이터 수집", proj: ["②"] },
+      { name: "통그라미", use: "지역사회의 지속가능발전목표(SDGs) 관련 통계 자료 분석", proj: ["③"] },
+      { name: "GreenQuest", use: "(기 SW 수상작) 게임 몰입형 환경에서 사회 문제 탐구 및 분석", proj: ["③", "④"] },
+    ],
+  },
+  {
+    type: "피지컬 AI 및 실감 탐구", color: C.amber, icon: Bot,
+    tools: [
+      { name: "딜라이텍스", use: "가정 및 지역사회 문제의 해결책을 3D 가상 세계(메타버스)로 구축", proj: ["③"] },
+      { name: "엔트리", use: "가상(Sim)의 알고리즘 코딩 및 햄스터봇 연동 환경 구축", proj: ["전체"] },
+      { name: "햄스터봇", use: "가상의 알고리즘을 현실 물리 공간에 구현하는 피지컬 AI 교구", proj: ["전체"] },
+    ],
+  },
+  {
+    type: "아이디어 생성 및 공유 협업", color: C.emerald, icon: Share2,
+    tools: [
+      { name: "구글 Docs", use: "모둠원들이 실시간으로 공동 문서를 작업하며 아이디어를 구체화", proj: ["③"] },
+      { name: "미주(Mizou)", use: "교육용 챗봇으로 로봇에 페르소나를 부여하고 상호작용 대화 진행", proj: ["전체"] },
+      { name: "패들렛", use: "온라인 보드에 산출물, 디지털 갤러리, 캠페인 동영상 등을 탑재하여 공유", proj: ["전체"] },
+    ],
+  },
+  {
+    type: "창작", color: "#8B5CF6", icon: PenLine,
+    tools: [
+      { name: "투닝", use: "실제 현장 사진에 해결책을 입력해 문제 해결 모습 직관적 구현", proj: ["②"] },
+      { name: "북크리에이터", use: "프로젝트 전 과정의 성장을 담은 전자책 포트폴리오 출판", proj: ["④"] },
+      { name: "캔바", use: "다양한 템플릿을 활용하여 카드뉴스, 영상, 발표 슬라이드 제작", proj: ["①", "③"] },
+    ],
+  },
+];
 
 /* ============================================================
    결론 · 일반화 · 제언 (최종 보고서 Ⅴ장 기준)
@@ -820,6 +899,31 @@ export default function App() {
   const [genLoading, setGenLoading] = useState(false);
   const [genResult, setGenResult] = useState(null);
   const [genError, setGenError] = useState(null);
+
+  const [copied, setCopied] = useState(false);
+
+  /** 지도안 텍스트 복사 */
+  const copyPlan = async () => {
+    try {
+      await navigator.clipboard.writeText(planToText(genResult));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      alert("복사에 실패했습니다. 브라우저 설정을 확인해 주세요.");
+    }
+  };
+
+  /** 지도안 .txt 파일로 저장 */
+  const downloadPlan = () => {
+    const blob = new Blob(["﻿" + planToText(genResult)], {
+      type: "text/plain;charset=utf-8",
+    });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `공감문해_지도안_${genResult.gradeLabel}_${genResult.keyword}.txt`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
 
   const runGenerator = useCallback(async () => {
     setGenLoading(true);
@@ -1539,6 +1643,52 @@ export default function App() {
             </div>
           </FadeIn>
 
+          {/* AI·에듀테크 12종 */}
+          <FadeIn>
+            <h3 className="text-xl font-extrabold mb-2 mt-12 flex items-center gap-2">
+              <Cpu size={19} style={{ color: C.emerald }} /> 사용한 AI·에듀테크
+            </h3>
+            <p className="text-sm mb-5" style={{ color: C.gray }}>
+              교과 핵심 아이디어(CK)와 개념 탐구(PK)에 맞춰 TPACK 관점에서 선정했습니다. 도구를 위한 수업이 아니라, 수업을 위한 도구입니다.
+            </p>
+          </FadeIn>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+            {EDUTECH_GROUPS.map((g, i) => (
+              <FadeIn key={g.type} delay={i * 0.07}>
+                <div className="rounded-3xl p-5 h-full" style={glass}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${g.color}14` }}>
+                      <g.icon size={17} style={{ color: g.color }} />
+                    </span>
+                    <h4 className="font-extrabold text-sm">{g.type}</h4>
+                  </div>
+                  <div className="flex flex-col gap-3">
+                    {g.tools.map((t) => (
+                      <div key={t.name} className="rounded-xl p-3" style={{ background: "#F8FAFC" }}>
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="font-extrabold text-sm" style={{ color: g.color }}>{t.name}</span>
+                          <span className="flex gap-1 shrink-0">
+                            {t.proj.map((p) => (
+                              <span key={p} className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: `${g.color}14`, color: g.color }}>
+                                {p}
+                              </span>
+                            ))}
+                          </span>
+                        </div>
+                        <p className="text-xs leading-relaxed" style={{ color: C.gray }}>{t.use}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+          <FadeIn delay={0.1}>
+            <p className="text-xs mb-2" style={{ color: "#94A3B8" }}>
+              ① 자기와 기술 연결하기 · ② 기술과 주변 연결하기 · ③ 주변과 세상 연결하기 · ④ 세상도 자기와 연결하기
+            </p>
+          </FadeIn>
+
           {/* 에듀테크 활용 Tip */}
           <FadeIn>
             <h3 className="text-xl font-extrabold mb-4 mt-10 flex items-center gap-2">
@@ -2070,7 +2220,7 @@ export default function App() {
       </section>
 
       {/* ================= AI 기획자 (성취기준 기반 제너레이터) ================= */}
-      <section id="generator" className="py-20 px-4">
+      <section id="generator" className="py-20 px-4 print-area">
         <div className="max-w-4xl mx-auto">
           <FadeIn>
             <SectionTitle
@@ -2176,9 +2326,35 @@ export default function App() {
                     <p className="text-sm leading-relaxed max-w-xl mx-auto" style={{ color: C.gray }}>{genResult.overview}</p>
                   </div>
 
-                  <div className="flex items-center gap-2 mb-5">
-                    <Layers size={17} style={{ color: C.blue }} />
-                    <h4 className="font-extrabold text-sm md:text-base">공·감·문·해 4단계 설계안</h4>
+                  <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <Layers size={17} style={{ color: C.blue }} />
+                      <h4 className="font-extrabold text-sm md:text-base">공·감·문·해 4단계 설계안</h4>
+                    </div>
+                    {/* 내보내기 버튼 (인쇄 시 숨김) */}
+                    <div className="flex gap-2 no-print">
+                      <button
+                        onClick={copyPlan}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-transform hover:scale-105"
+                        style={{ border: "1.5px solid #E2E8F0", background: "#fff", color: copied ? C.emerald : C.gray }}
+                      >
+                        {copied ? <><Check size={14} /> 복사됨</> : <><FileText size={14} /> 텍스트 복사</>}
+                      </button>
+                      <button
+                        onClick={downloadPlan}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-transform hover:scale-105"
+                        style={{ border: "1.5px solid #E2E8F0", background: "#fff", color: C.gray }}
+                      >
+                        <Download size={14} /> 파일 저장
+                      </button>
+                      <button
+                        onClick={() => window.print()}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white transition-transform hover:scale-105"
+                        style={{ background: C.blue }}
+                      >
+                        <Printer size={14} /> 인쇄 · PDF 저장
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex flex-col gap-4">
