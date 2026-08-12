@@ -7,9 +7,11 @@
  * API 키는 이 모듈을 호출하는 서버 코드에서만 전달되며 브라우저로 나가지 않는다.
  */
 import { readFileSync } from "node:fs";
-import {
-  baseKey, readRandomVariant, writeVariant, countVariants, dedupe, MAX_VARIANTS,
-} from "./_cache.mjs";
+import { baseKey, readRandomVariant, writeVariant } from "./_cache.mjs";
+import { paced, queueLength } from "./_queue.mjs";
+
+/** 호출 간 최소 간격 — 무료 한도(분당 10~15건) 안쪽으로 유지 */
+const MIN_INTERVAL_MS = 4500;
 
 const STANDARDS = JSON.parse(
   readFileSync(new URL("./standards.json", import.meta.url), "utf-8")
@@ -244,44 +246,54 @@ export async function generatePlan({ grade, keyword, apiKey, model, temperature 
 /**
  * 지도안 생성 (실제 엔드포인트에서 사용)
  *
- * 기본 동작
- *  - 학년·소재 조합마다 변형안을 최대 3개까지 쌓아 두고 그중 하나를 무작위로 반환
- *    → 같은 주제라도 볼 때마다 다른 설계안이 나옵니다.
- *  - 저장된 변형안이 없으면 새로 생성
- *  - 동시에 같은 요청이 들어오면 한 번만 실제로 생성
+ * 원칙: 누를 때마다 항상 새로 만듭니다. 같은 주제라도 매번 다른 설계안이 나옵니다.
  *
- * fresh=true (다른 안으로 다시 만들기)
- *  - 저장된 것을 무시하고 새로 생성한 뒤 변형안으로 추가
+ * 트래픽 대응
+ *  1) 요청이 몰리면 거절하지 않고 줄을 세워 순서대로 처리합니다.
+ *  2) 그래도 한도에 걸리면, 이전에 만들어 둔 설계안을 대신 보여줍니다.
+ *     이때는 fallback 표시를 함께 돌려주어 화면에 솔직히 안내합니다.
  */
 export async function generatePlanCached({
-  grade, keyword, apiKey, model, blobToken, fresh = false,
+  grade, keyword, apiKey, model, blobToken,
 }) {
   const { grade: g, band } = parseGradeBand(grade);
   const kw = String(keyword ?? "").trim() || "기후 위기";
   const base = baseKey({ band, grade: g, keyword: kw });
 
-  if (!fresh) {
-    const hit = await readRandomVariant(base, blobToken);
-    if (hit) {
-      return { ...hit.data, cached: true, variantCount: hit.variantCount };
+  let queueInfo = null;
+
+  try {
+    const plan = await paced(
+      MIN_INTERVAL_MS,
+      () =>
+        generatePlan({
+          grade,
+          keyword: kw,
+          apiKey,
+          model,
+          // 매번 다른 결과가 나오도록 다양성을 높게 유지
+          temperature: 1.0,
+        }),
+      (info) => { queueInfo = info; }
+    );
+
+    // 다음 사람을 위한 예비용으로 보관 (평상시에는 쓰이지 않음)
+    writeVariant(base, plan, blobToken).catch(() => {});
+
+    return { ...plan, fresh: true, queued: queueInfo?.position ?? 0 };
+  } catch (e) {
+    // 한도 초과 등으로 실패하면 보관해 둔 설계안으로 대체
+    if (e.status === 429) {
+      const spare = await readRandomVariant(base, blobToken);
+      if (spare) {
+        return {
+          ...spare.data,
+          fresh: false,
+          fallback: true,
+          queueLength: queueLength(),
+        };
+      }
     }
+    throw e;
   }
-
-  // fresh 요청은 각자 새로 만들어야 하므로 병합 키를 분리
-  const lockKey = fresh ? `${base}:fresh:${Date.now()}` : base;
-
-  return dedupe(lockKey, async () => {
-    if (!fresh) {
-      const again = await readRandomVariant(base, blobToken);
-      if (again) return { ...again.data, cached: true, variantCount: again.variantCount };
-    }
-    // 다시 만들 때는 앞선 안과 겹치지 않도록 다양성을 높임
-    const plan = await generatePlan({
-      grade, keyword: kw, apiKey, model,
-      temperature: fresh ? 1.0 : 0.7,
-    });
-    await writeVariant(base, plan, blobToken);
-    const n = await countVariants(base, blobToken);
-    return { ...plan, cached: false, variantCount: n, maxVariants: MAX_VARIANTS };
-  });
 }

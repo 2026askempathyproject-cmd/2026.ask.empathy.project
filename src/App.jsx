@@ -141,14 +141,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * 요청이 몰려 한도(429)에 걸리면 잠시 기다렸다가 자동으로 다시 시도합니다.
  * @param {(msg:string)=>void} onRetry 재시도 안내 콜백
  */
-async function generateProjectPlan({ grade, keyword, fresh = false }, onRetry) {
-  const waits = [8000, 16000]; // 최대 2회 자동 재시도
+async function generateProjectPlan({ grade, keyword }, onRetry) {
+  const waits = [10000, 20000]; // 최대 2회 자동 재시도
 
   for (let attempt = 0; ; attempt++) {
     const res = await fetch("/api/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ grade, keyword, fresh }),
+      body: JSON.stringify({ grade, keyword }),
     });
     const data = await res.json().catch(() => ({}));
 
@@ -156,7 +156,7 @@ async function generateProjectPlan({ grade, keyword, fresh = false }, onRetry) {
 
     if (res.status === 429 && attempt < waits.length) {
       const sec = waits[attempt] / 1000;
-      onRetry?.(`요청이 많아 ${sec}초 후 자동으로 다시 시도합니다…`);
+      onRetry?.(`요청이 몰려 있어 ${sec}초 뒤 자동으로 다시 시도합니다…`);
       await sleep(waits[attempt]);
       continue;
     }
@@ -1044,16 +1044,33 @@ export default function App() {
     setExportOpen(false);
   };
 
-  const [genNotice, setGenNotice] = useState(null); // 재시도 안내
+  const [genNotice, setGenNotice] = useState(null); // 대기·재시도 안내
 
-  const runGenerator = useCallback(async (fresh = false) => {
+  /* 오래 걸리면 무슨 일이 일어나는지 단계적으로 알려 줌 (침묵 방지) */
+  useEffect(() => {
+    if (!genLoading) return;
+    const steps = [
+      [0, null],
+      [4000, "해당 학년군의 2022 개정 교육과정 성취기준을 살펴보고 있어요"],
+      [9000, "공·감·문·해 4단계에 맞춰 활동과 평가를 구성하고 있어요"],
+      [16000, "요청이 몰리면 순서대로 처리됩니다. 조금만 기다려 주세요"],
+    ];
+    const timers = steps
+      .filter(([, msg]) => msg)
+      .map(([ms, msg]) =>
+        setTimeout(() => setGenNotice((cur) => (cur?.includes("다시 시도") ? cur : msg)), ms)
+      );
+    return () => timers.forEach(clearTimeout);
+  }, [genLoading]);
+
+  const runGenerator = useCallback(async () => {
     setGenLoading(true);
-    if (!fresh) setGenResult(null);
+    setGenResult(null);
     setGenError(null);
-    setGenNotice(fresh ? "새로운 관점으로 다시 설계하고 있어요…" : null);
+    setGenNotice(null);
     try {
       const plan = await generateProjectPlan(
-        { grade: `초등 ${genGrade}학년`, keyword: genKeyword, fresh },
+        { grade: `초등 ${genGrade}학년`, keyword: genKeyword },
         (msg) => setGenNotice(msg)
       );
       setGenResult(plan);
@@ -2508,14 +2525,14 @@ export default function App() {
                       placeholder="예: 기후 위기"
                       value={genKeyword}
                       onChange={(e) => setGenKeyword(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter" && !genLoading) runGenerator(false); }}
+                      onKeyDown={(e) => { if (e.key === "Enter" && !genLoading) runGenerator(); }}
                     />
                   </div>
                 </div>
               </div>
 
               <button
-                onClick={() => runGenerator(false)}
+                onClick={() => runGenerator()}
                 disabled={genLoading}
                 className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-extrabold text-white text-base transition-transform hover:scale-[1.02] disabled:opacity-80"
                 style={{ background: `linear-gradient(90deg,${C.blue},${C.coral})`, boxShadow: "0 10px 28px rgba(244,63,94,0.3)" }}
@@ -2574,10 +2591,10 @@ export default function App() {
                     </div>
                     <h4 className="text-lg md:text-xl font-black mb-2">{genResult.projectTitle}</h4>
                     <p className="text-sm leading-relaxed max-w-xl mx-auto" style={{ color: C.gray }}>{genResult.overview}</p>
-                    {genResult.variantCount > 1 && (
-                      <p className="text-xs mt-3 flex items-center justify-center gap-1.5" style={{ color: C.muted }}>
-                        <Layers size={12} />
-                        이 주제로 {genResult.variantCount}가지 설계안이 쌓여 있습니다 · 다시 만들면 또 다른 안이 나옵니다
+                    {genResult.fallback && (
+                      <p className="text-xs mt-3 flex items-center justify-center gap-1.5 leading-relaxed" style={{ color: C.coral }}>
+                        <AlertTriangle size={12} />
+                        지금 요청이 몰려 새로 만들지 못하고, 이전에 만들어 둔 설계안을 보여드립니다
                       </p>
                     )}
                   </div>
@@ -2589,13 +2606,13 @@ export default function App() {
                     </div>
                     <div className="flex gap-2 flex-wrap">
                       <button
-                        onClick={() => runGenerator(true)}
+                        onClick={() => runGenerator()}
                         disabled={genLoading}
-                        title="같은 학년·소재로 다른 설계안을 새로 만듭니다"
+                        title="같은 학년·소재로 완전히 새로운 설계안을 만듭니다"
                         className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-transform hover:scale-105 disabled:opacity-60"
                         style={{ border: `1.5px solid ${C.coral}55`, background: "#fff", color: C.coral }}
                       >
-                        <RefreshCw size={14} /> 다른 안으로 다시 만들기
+                        <RefreshCw size={14} /> 다시 만들기
                       </button>
                       <button
                         onClick={copyPlan}
