@@ -134,17 +134,34 @@ const dataService = {
 /* ============================================================
    AI 기획자 — 서버 API 호출 (키는 서버에만 존재)
    ============================================================ */
-async function generateProjectPlan({ grade, keyword }) {
-  const res = await fetch("/api/generate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ grade, keyword }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * 지도안 생성 요청
+ * 요청이 몰려 한도(429)에 걸리면 잠시 기다렸다가 자동으로 다시 시도합니다.
+ * @param {(msg:string)=>void} onRetry 재시도 안내 콜백
+ */
+async function generateProjectPlan({ grade, keyword }, onRetry) {
+  const waits = [8000, 16000]; // 최대 2회 자동 재시도
+
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ grade, keyword }),
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok) return data;
+
+    if (res.status === 429 && attempt < waits.length) {
+      const sec = waits[attempt] / 1000;
+      onRetry?.(`요청이 많아 ${sec}초 후 자동으로 다시 시도합니다…`);
+      await sleep(waits[attempt]);
+      continue;
+    }
     throw new Error(data.error || `요청 실패 (${res.status})`);
   }
-  return data;
 }
 
 /* ============================================================
@@ -1027,20 +1044,24 @@ export default function App() {
     setExportOpen(false);
   };
 
+  const [genNotice, setGenNotice] = useState(null); // 재시도 안내
+
   const runGenerator = useCallback(async () => {
     setGenLoading(true);
     setGenResult(null);
     setGenError(null);
+    setGenNotice(null);
     try {
-      const plan = await generateProjectPlan({
-        grade: `초등 ${genGrade}학년`,
-        keyword: genKeyword,
-      });
+      const plan = await generateProjectPlan(
+        { grade: `초등 ${genGrade}학년`, keyword: genKeyword },
+        (msg) => setGenNotice(msg)
+      );
       setGenResult(plan);
     } catch (e) {
       setGenError(e.message);
     } finally {
       setGenLoading(false);
+      setGenNotice(null);
     }
   }, [genGrade, genKeyword]);
 
@@ -2522,7 +2543,7 @@ export default function App() {
                     ))}
                   </div>
                   <p className="text-sm font-semibold" style={{ color: C.gray }}>
-                    공·감·문·해 4단계 모형에 맞춰 성취기준을 연결하고 있어요
+                    {genNotice || "공·감·문·해 4단계 모형에 맞춰 성취기준을 연결하고 있어요"}
                   </p>
                 </div>
               )}

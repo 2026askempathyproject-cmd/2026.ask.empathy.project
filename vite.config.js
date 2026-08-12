@@ -1,7 +1,7 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { generatePlan } from "./api/_lib.mjs";
+import { generatePlanCached } from "./api/_lib.mjs";
 import { uploadFile } from "./api/_upload-lib.mjs";
 
 /** 요청 본문(JSON)을 모아서 반환 */
@@ -43,15 +43,16 @@ export default defineConfig(({ mode }) => {
             }
             try {
               const { grade, keyword } = await readJson(req);
-              const plan = await generatePlan({
+              const plan = await generatePlanCached({
                 grade,
                 keyword,
                 apiKey: env.GEMINI_API_KEY,
                 model: env.GEMINI_MODEL,
+                blobToken: env.BLOB_READ_WRITE_TOKEN,
               });
               res.end(JSON.stringify(plan));
             } catch (e) {
-              res.statusCode = 500;
+              res.statusCode = e.status === 429 ? 429 : 500;
               res.end(JSON.stringify({ error: e.message }));
             }
           });

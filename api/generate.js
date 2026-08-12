@@ -3,7 +3,9 @@
  * GEMINI_API_KEY는 Vercel 대시보드 → Settings → Environment Variables에 등록.
  * 키는 서버에서만 사용되며 브라우저 번들에 포함되지 않는다.
  */
-import { generatePlan } from "./_lib.mjs";
+import { generatePlanCached } from "./_lib.mjs";
+
+export const config = { maxDuration: 60 };
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -12,14 +14,17 @@ export default async function handler(req, res) {
   try {
     const body =
       typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body ?? {};
-    const plan = await generatePlan({
+    const plan = await generatePlanCached({
       grade: body.grade,
       keyword: body.keyword,
       apiKey: process.env.GEMINI_API_KEY,
       model: process.env.GEMINI_MODEL,
+      blobToken: process.env.BLOB_READ_WRITE_TOKEN,
     });
+    // 같은 결과를 CDN에서도 잠시 재사용
+    res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=86400");
     return res.status(200).json(plan);
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    return res.status(e.status === 429 ? 429 : 500).json({ error: e.message });
   }
 }

@@ -7,6 +7,7 @@
  * API 키는 이 모듈을 호출하는 서버 코드에서만 전달되며 브라우저로 나가지 않는다.
  */
 import { readFileSync } from "node:fs";
+import { cacheKey, readCache, writeCache, dedupe } from "./_cache.mjs";
 
 const STANDARDS = JSON.parse(
   readFileSync(new URL("./standards.json", import.meta.url), "utf-8")
@@ -211,7 +212,11 @@ export async function generatePlan({ grade, keyword, apiKey, model }) {
       throw new Error("API 키가 올바르지 않습니다. .env의 GEMINI_API_KEY를 확인해 주세요.");
     }
     if (resp.status === 429) {
-      throw new Error("무료 사용량 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.");
+      const e = new Error(
+        "지금 요청이 몰려 있습니다. 20초쯤 뒤에 다시 눌러 주세요. (다른 분이 만든 같은 주제는 즉시 나옵니다)"
+      );
+      e.status = 429;
+      throw e;
     }
     throw new Error(`Gemini API 오류 (${resp.status}): ${detail.slice(0, 200)}`);
   }
@@ -231,4 +236,30 @@ export async function generatePlan({ grade, keyword, apiKey, model }) {
     throw new Error("AI가 4단계 형식을 지키지 않았습니다. 다시 시도해 주세요.");
   }
   return { ...plan, gradeLabel, gradeBand: band, keyword: kw };
+}
+
+/**
+ * 캐시를 거치는 지도안 생성 (실제 엔드포인트에서 사용)
+ *
+ * 1) 같은 학년·소재로 만든 결과가 있으면 즉시 반환 (API 호출 없음)
+ * 2) 동시에 같은 요청이 들어오면 한 번만 실제로 생성
+ * 3) 생성 결과는 다음 사람을 위해 저장
+ */
+export async function generatePlanCached({ grade, keyword, apiKey, model, blobToken }) {
+  const { grade: g, band } = parseGradeBand(grade);
+  const kw = String(keyword ?? "").trim() || "기후 위기";
+  const key = cacheKey({ band, grade: g, keyword: kw });
+
+  const hit = await readCache(key, blobToken);
+  if (hit) return { ...hit, cached: true };
+
+  return dedupe(key, async () => {
+    // 대기 중 다른 요청이 이미 저장했을 수 있으므로 한 번 더 확인
+    const again = await readCache(key, blobToken);
+    if (again) return { ...again, cached: true };
+
+    const plan = await generatePlan({ grade, keyword: kw, apiKey, model });
+    await writeCache(key, plan, blobToken);
+    return { ...plan, cached: false };
+  });
 }
