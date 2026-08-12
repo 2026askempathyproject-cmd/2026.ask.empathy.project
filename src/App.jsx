@@ -141,14 +141,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * 요청이 몰려 한도(429)에 걸리면 잠시 기다렸다가 자동으로 다시 시도합니다.
  * @param {(msg:string)=>void} onRetry 재시도 안내 콜백
  */
-async function generateProjectPlan({ grade, keyword }, onRetry) {
+async function generateProjectPlan({ grade, keyword, school, subjects }, onRetry) {
   const waits = [10000, 20000]; // 최대 2회 자동 재시도
 
   for (let attempt = 0; ; attempt++) {
     const res = await fetch("/api/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ grade, keyword }),
+      body: JSON.stringify({ grade, keyword, school, subjects }),
     });
     const data = await res.json().catch(() => ({}));
 
@@ -969,7 +969,35 @@ export default function App() {
   };
 
   /* ---------- AI 기획자 ---------- */
+  const [genSchool, setGenSchool] = useState("초등학교");
+  const [genSubjects, setGenSubjects] = useState([]);   // 중·고 과목 다중 선택
+  const [subjectPool, setSubjectPool] = useState(null); // 학교급별 과목 목록
+  const [subjectOpen, setSubjectOpen] = useState(false);
   const [genGrade, setGenGrade] = useState("5");
+
+  /* 과목 목록은 한 번만 불러옴 */
+  useEffect(() => {
+    fetch("/api/subjects")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setSubjectPool(d))
+      .catch(() => {});
+  }, []);
+
+  /* 학교급이 바뀌면 학년과 과목 선택을 초기화 */
+  const changeSchool = (s) => {
+    setGenSchool(s);
+    setGenSubjects([]);
+    setSubjectOpen(false);
+    setGenGrade(s === "초등학교" ? "5" : "1");
+  };
+
+  const toggleSubject = (name) =>
+    setGenSubjects((prev) =>
+      prev.includes(name) ? prev.filter((x) => x !== name) : [...prev, name]
+    );
+
+  const gradeOptions =
+    genSchool === "초등학교" ? [1, 2, 3, 4, 5, 6] : [1, 2, 3];
   const [genKeyword, setGenKeyword] = useState("");
   const [genLoading, setGenLoading] = useState(false);
   const [genResult, setGenResult] = useState(null);
@@ -1070,7 +1098,12 @@ export default function App() {
     setGenNotice(null);
     try {
       const plan = await generateProjectPlan(
-        { grade: `초등 ${genGrade}학년`, keyword: genKeyword },
+        {
+          grade: `${genSchool} ${genGrade}학년`,
+          school: genSchool,
+          subjects: genSubjects,
+          keyword: genKeyword,
+        },
         (msg) => setGenNotice(msg)
       );
       setGenResult(plan);
@@ -1080,7 +1113,7 @@ export default function App() {
       setGenLoading(false);
       setGenNotice(null);
     }
-  }, [genGrade, genKeyword]);
+  }, [genGrade, genKeyword, genSchool, genSubjects]);
 
   const scrollTo = (id) => {
     setMenuOpen(false);
@@ -2493,16 +2526,41 @@ export default function App() {
             <SectionTitle
               badge="AI PLANNER"
               title="공감문해 프로젝트 제너레이터"
-              sub="2022 개정 교육과정 성취기준과 연구 모형에 근거하여 공·감·문·해 4단계 수업 지도안을 AI가 설계합니다."
+              sub="초·중·고 어느 학교급이든, 2022 개정 교육과정 성취기준과 연구 모형에 근거해 공·감·문·해 4단계 지도안을 AI가 설계합니다."
               color={C.coral}
             />
           </FadeIn>
 
           <FadeIn delay={0.1}>
             <div className="rounded-3xl p-6 md:p-8" style={glass}>
+              {/* 학교급 */}
+              <div className="mb-4">
+                <label className="block text-xs font-bold mb-1.5" style={{ color: C.gray }}>학교급</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {["초등학교", "중학교", "고등학교"].map((s) => {
+                    const on = genSchool === s;
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => changeSchool(s)}
+                        className="py-2.5 rounded-xl text-sm font-bold transition-all"
+                        style={{
+                          background: on ? C.blue : "#fff",
+                          color: on ? "#fff" : C.gray,
+                          border: `1.5px solid ${on ? C.blue : "#E2E8F0"}`,
+                          boxShadow: on ? "0 4px 12px rgba(37,99,235,0.3)" : "none",
+                        }}
+                      >
+                        {s}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="grid md:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="block text-xs font-bold mb-1.5" style={{ color: C.gray }}>수업 대상 학년</label>
+                  <label className="block text-xs font-bold mb-1.5" style={{ color: C.gray }}>학년</label>
                   <div className="flex items-center gap-2 rounded-xl px-4" style={{ border: "1.5px solid #E2E8F0", background: "#fff" }}>
                     <GraduationCap size={17} style={{ color: C.blue }} />
                     <select
@@ -2510,8 +2568,11 @@ export default function App() {
                       value={genGrade}
                       onChange={(e) => setGenGrade(e.target.value)}
                     >
-                      {[1, 2, 3, 4, 5, 6].map((n) => (
-                        <option key={n} value={n}>초등 {n}학년</option>
+                      {gradeOptions.map((n) => (
+                        <option key={n} value={n}>
+                          {genSchool === "초등학교" ? `초등 ${n}학년`
+                            : genSchool === "중학교" ? `중 ${n}학년` : `고 ${n}학년`}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -2531,6 +2592,79 @@ export default function App() {
                 </div>
               </div>
 
+              {/* 과목 다중 선택 — 중·고등학교 */}
+              {genSchool !== "초등학교" && (
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold" style={{ color: C.gray }}>
+                      융합할 교과 <span style={{ color: C.muted }}>(여러 개 선택 가능)</span>
+                    </label>
+                    {genSubjects.length > 0 && (
+                      <button
+                        onClick={() => setGenSubjects([])}
+                        className="text-xs font-bold"
+                        style={{ color: C.coral }}
+                      >
+                        선택 해제
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => setSubjectOpen((v) => !v)}
+                    className="w-full flex items-center justify-between gap-2 rounded-xl px-4 py-3 text-sm"
+                    style={{ border: "1.5px solid #E2E8F0", background: "#fff" }}
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <BookOpen size={17} style={{ color: C.emerald }} className="shrink-0" />
+                      <span className="truncate text-left" style={{ color: genSubjects.length ? C.ink : "#94A3B8" }}>
+                        {genSubjects.length
+                          ? `${genSubjects.length}개 선택 — ${genSubjects.join(", ")}`
+                          : "선택하지 않으면 피지컬 AI 융합 추천 교과로 설계합니다"}
+                      </span>
+                    </span>
+                    <ChevronRight
+                      size={16}
+                      style={{ color: C.gray, transform: subjectOpen ? "rotate(90deg)" : "none", transition: "transform .2s" }}
+                      className="shrink-0"
+                    />
+                  </button>
+
+                  {subjectOpen && (
+                    <div
+                      className="mt-2 rounded-xl p-3 max-h-64 overflow-y-auto"
+                      style={{ border: "1.5px solid #E2E8F0", background: "#F8FAFC" }}
+                    >
+                      {!subjectPool ? (
+                        <p className="text-xs text-center py-4" style={{ color: C.gray }}>과목 목록을 불러오는 중…</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {(subjectPool[genSchool] || []).map(({ subject, count }) => {
+                            const on = genSubjects.includes(subject);
+                            return (
+                              <button
+                                key={subject}
+                                onClick={() => toggleSubject(subject)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all"
+                                style={{
+                                  background: on ? C.emerald : "#fff",
+                                  color: on ? "#fff" : C.gray,
+                                  border: `1.5px solid ${on ? C.emerald : "#E2E8F0"}`,
+                                }}
+                              >
+                                {on && <Check size={12} />}
+                                {subject}
+                                <span style={{ opacity: 0.7 }}>{count}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <button
                 onClick={() => runGenerator()}
                 disabled={genLoading}
@@ -2548,7 +2682,7 @@ export default function App() {
                 )}
               </button>
               <p className="mt-2 text-center text-xs" style={{ color: C.gray }}>
-                해당 학년군의 2022 개정 교육과정 성취기준을 근거로 생성합니다 (약 5~15초 소요)
+                {genSchool} 2022 개정 교육과정 성취기준을 근거로 생성합니다 (약 5~15초 소요)
               </p>
 
               {/* 로딩 애니메이션 */}
@@ -2588,6 +2722,11 @@ export default function App() {
                       <span className="px-2.5 py-1 rounded-full text-xs font-bold" style={{ background: `${C.coral}14`, color: C.coral }}>
                         {genResult.keyword}
                       </span>
+                      {genResult.subjects?.length > 0 && (
+                        <span className="px-2.5 py-1 rounded-full text-xs font-bold" style={{ background: `${C.emerald}14`, color: C.emerald }}>
+                          {genResult.subjects.join(" · ")}
+                        </span>
+                      )}
                     </div>
                     <h4 className="text-lg md:text-xl font-black mb-2">{genResult.projectTitle}</h4>
                     <p className="text-sm leading-relaxed max-w-xl mx-auto" style={{ color: C.gray }}>{genResult.overview}</p>

@@ -17,24 +17,103 @@ const STANDARDS = JSON.parse(
   readFileSync(new URL("./standards.json", import.meta.url), "utf-8")
 );
 
-/** "초등 5학년", "5학년", "5" 등에서 학년군 도출 */
-export function parseGradeBand(gradeInput) {
-  const m = String(gradeInput ?? "").match(/[1-6]/);
-  const n = m ? Number(m[0]) : 5;
-  if (n <= 2) return { grade: n, band: "1~2학년" };
-  if (n <= 4) return { grade: n, band: "3~4학년" };
-  return { grade: n, band: "5~6학년" };
+export const SCHOOLS = ["초등학교", "중학교", "고등학교"];
+
+/** 학교급별 선택 가능한 과목 (성취기준 수 순) */
+export function subjectsOf(school) {
+  const set = new Map();
+  STANDARDS.filter((s) => s.school === school).forEach((s) =>
+    set.set(s.subject, (set.get(s.subject) || 0) + 1)
+  );
+  return [...set.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([subject, count]) => ({ subject, count }));
 }
 
-/** 프로젝트 적용교과 중심으로 학년군 성취기준 필터링 */
-export function filterStandards(band) {
-  const SUBJECTS =
-    band === "1~2학년"
-      ? ["국어", "수학", "바른 생활", "슬기로운 생활", "즐거운 생활"]
-      : ["국어", "도덕", "사회", "실과", "과학", "미술"];
-  return STANDARDS.filter(
-    (s) => s.grade === band && SUBJECTS.includes(s.subject)
+/** 과목 미선택 시 기본값 — 피지컬 AI 융합에 적합한 교과 */
+const DEFAULT_SUBJECTS = {
+  초등학교: ["국어", "도덕", "사회", "실과", "과학", "미술"],
+  중학교: ["국어", "도덕", "역사", "기술·가정", "정보"],
+  고등학교: [
+    "정보", "인공지능 기초", "데이터 과학", "로봇과 공학세계",
+    "창의 공학 설계", "소프트웨어와 생활", "기술·가정", "현대사회와 윤리",
+  ],
+};
+
+/** 프롬프트에 실을 성취기준 최대 개수 (토큰·정확도 균형) */
+const MAX_STANDARDS = 200;
+
+/**
+ * "초등 5학년", "중학교 2학년", "고2" 등에서 학교급·학년·학년군 도출
+ */
+export function parseGradeBand(gradeInput, schoolInput) {
+  const raw = String(gradeInput ?? "");
+  let school = SCHOOLS.includes(schoolInput) ? schoolInput : null;
+  if (!school) {
+    if (/고등|^고\d|고교/.test(raw)) school = "고등학교";
+    else if (/중학|^중\d/.test(raw)) school = "중학교";
+    else school = "초등학교";
+  }
+
+  const m = raw.match(/[1-6]/);
+  const n = m ? Number(m[0]) : school === "초등학교" ? 5 : 1;
+
+  if (school === "중학교") {
+    return { school, grade: Math.min(3, n), band: "중1~3학년",
+             label: `중학교 ${Math.min(3, n)}학년` };
+  }
+  if (school === "고등학교") {
+    const g = Math.min(3, n);
+    return { school, grade: g, band: g === 1 ? "고1(공통)" : "고1~3(선택)",
+             label: `고등학교 ${g}학년` };
+  }
+  const band = n <= 2 ? "1~2학년" : n <= 4 ? "3~4학년" : "5~6학년";
+  return { school, grade: n, band, label: `초등 ${n}학년` };
+}
+
+/** 키워드 관련도 점수 (성취기준이 많을 때 추리기 위함) */
+function relevance(s, keyword) {
+  const kws = String(keyword).split(/\s+/).filter((w) => w.length >= 2);
+  const text = `${s.area} ${s.description}`;
+  let score = kws.reduce((n, w) => n + (text.includes(w) ? 3 : 0), 0);
+  // 피지컬 AI 프로젝트와 맞닿는 어휘 가산
+  ["로봇", "인공지능", "데이터", "프로그램", "코딩", "디지털", "매체", "제작", "설계"]
+    .forEach((w) => { if (text.includes(w)) score += 1; });
+  return score;
+}
+
+/**
+ * 학교급·학년군·과목으로 성취기준 필터링
+ * @param {string} band 학년군
+ * @param {string} school 학교급
+ * @param {string[]} subjects 선택 과목 (비우면 기본값)
+ * @param {string} keyword 소재 (개수 초과 시 관련도 정렬에 사용)
+ */
+export function filterStandards(band, school = "초등학교", subjects = [], keyword = "") {
+  const picked =
+    Array.isArray(subjects) && subjects.length ? subjects : DEFAULT_SUBJECTS[school] || [];
+
+  let list = STANDARDS.filter(
+    (s) => s.school === school && s.grade === band && picked.includes(s.subject)
   );
+
+  // 고등학교 선택과목처럼 학년군 표기가 갈리는 경우 학교급 전체에서 보완
+  if (!list.length) {
+    list = STANDARDS.filter((s) => s.school === school && picked.includes(s.subject));
+  }
+  // 고등학교는 공통·선택을 함께 제공
+  if (school === "고등학교") {
+    list = STANDARDS.filter((s) => s.school === school && picked.includes(s.subject));
+  }
+
+  if (list.length > MAX_STANDARDS) {
+    list = [...list]
+      .map((s) => ({ s, r: relevance(s, keyword) }))
+      .sort((a, b) => b.r - a.r)
+      .slice(0, MAX_STANDARDS)
+      .map((x) => x.s);
+  }
+  return list;
 }
 
 const MODEL_DOC = `
@@ -74,23 +153,60 @@ const MODEL_DOC = `
 · 5~6학년: 공적 담론장(사회·세계) 중심, 형식적 조작기의 시스템 설계 수준
 `;
 
-function buildPrompt({ gradeLabel, band, keyword, standards }) {
+/** 학교급별 설계 지침 — 초등 모형을 중·고로 확장할 때의 위계 */
+const SCHOOL_GUIDE = {
+  초등학교: `
+[초등학교 적용 지침]
+· 구체적 조작기~형식적 조작기 진입 단계. 직관적 탐색과 감각적 체득을 중시한다.
+· 피지컬 AI: 엔트리 블록 코딩 + 햄스터봇 수준의 조작으로 설계한다.
+· 산출물: 카드뉴스, 만화, 캠페인 영상, 전자책 포트폴리오.`,
+
+  중학교: `
+[중학교 적용 지침]
+· 형식적 조작기. 원리 이해와 구조적 설계가 가능하므로 '왜 그렇게 작동하는가'를 다룬다.
+· 자유학기(주제선택·진로탐색) 및 학교 스포츠·동아리와 연계할 수 있게 설계한다.
+· 피지컬 AI: 센서 데이터 수집·조건 분기·알고리즘 최적화까지 다룬다.
+  아두이노·마이크로비트·햄스터봇 등 학교 여건에 맞는 교구를 제안한다.
+· 텍스트 코딩(파이썬) 입문을 선택적으로 포함할 수 있다.
+· 산출물: 문제 정의 보고서, 프로토타입 시연, 사용 설명서, 캠페인 콘텐츠.
+· 진로 연계: 기술·정보 분야 직업 세계와 연결한다.`,
+
+  고등학교: `
+[고등학교 적용 지침]
+· 추상적·비판적 사고가 가능하다. 기술의 사회적 영향과 윤리적 쟁점을 반드시 포함한다.
+· 학교자율시간·진로선택·융합선택 과목 및 학생부 탐구 활동(주제탐구)과 연계되도록 설계한다.
+· 피지컬 AI: 데이터 전처리, 모델 학습·평가, 센서-액추에이터 제어, 시스템 통합까지 다룬다.
+  파이썬·텍스트 코딩을 기본으로 하고, 라즈베리파이·아두이노 등을 활용할 수 있다.
+· 소버린 AI 관점(데이터 주권, 알고리즘 편향, 인공지능 윤리)을 명시적으로 다룬다.
+· 산출물: 탐구 보고서, 프로토타입과 성능 평가, 기술 영향 평가 에세이, 사회 제안서.
+· 심화: 지역사회·기업·정부에 제안하는 실제적 결과물로 마무리한다.`,
+};
+
+function buildPrompt({ gradeLabel, band, keyword, standards, school, subjects }) {
   const lines = standards
     .map((s) => `${s.subject}|${s.code}|${s.description}`)
     .join("\n");
 
+  const subjectNote = subjects?.length
+    ? `· 선택 교과: ${subjects.join(", ")} — 이 교과들을 실제로 융합하여 설계할 것.`
+    : "";
+
   return `당신은 2022 개정 교육과정 전문가이자 '피지컬 AI 기반 공감문해 프로젝트' 수업 설계자입니다.
 ${MODEL_DOC}
+${SCHOOL_GUIDE[school] || ""}
 
-[2022 개정 교육과정 성취기준 목록 — ${band}군]
+[2022 개정 교육과정 성취기준 목록 — ${school} ${band}]
 반드시 아래 목록에 실제로 존재하는 성취기준만 선택하고, 코드와 문장을 그대로 인용할 것. 단계당 1~3개.
+목록에 없는 코드를 지어내면 안 된다.
 과목|코드|성취기준
 ${lines}
 
 [설계 요청]
-· 수업 대상: ${gradeLabel} (${band}군 발달 수준에 맞출 것)
+· 수업 대상: ${gradeLabel} (${school} 발달 수준과 위 적용 지침을 반드시 반영할 것)
 · 수업 소재: ${keyword}
+${subjectNote}
 · 소재와 가장 관련 깊은 교과의 성취기준을 우선 선택하되, 여러 교과를 융합할 것.
+· 공·감·문·해 4단계 구조는 학교급과 무관하게 유지하되, 활동의 수준과 도구는 학교급에 맞출 것.
 
 [출력 형식]
 아래 JSON 스키마로만 응답 (다른 텍스트 금지, 모든 값은 한국어):
@@ -175,17 +291,24 @@ async function discoverFlashModel(apiKey) {
 /**
  * Gemini 호출 → 공감문해 4단계 프로젝트 설계안(JSON) 반환
  */
-export async function generatePlan({ grade, keyword, apiKey, model, temperature }) {
+export async function generatePlan({
+  grade, keyword, apiKey, model, temperature, school, subjects = [],
+}) {
   if (!apiKey) {
     throw new Error(
       "GEMINI_API_KEY가 설정되지 않았습니다. 프로젝트 루트에 .env 파일을 만들고 키를 입력해 주세요. (.env.example 참고)"
     );
   }
   const kw = String(keyword ?? "").trim() || "기후 위기";
-  const { grade: g, band } = parseGradeBand(grade);
-  const gradeLabel = `초등 ${g}학년`;
-  const standards = filterStandards(band);
-  const prompt = buildPrompt({ gradeLabel, band, keyword: kw, standards });
+  const info = parseGradeBand(grade, school);
+  const { band, label: gradeLabel, school: sch } = info;
+  const standards = filterStandards(band, sch, subjects, kw);
+  if (!standards.length) {
+    throw new Error("선택한 학교급·과목에 해당하는 성취기준을 찾지 못했습니다. 과목을 다시 선택해 주세요.");
+  }
+  const prompt = buildPrompt({
+    gradeLabel, band, keyword: kw, standards, school: sch, subjects,
+  });
 
   // .env의 GEMINI_MODEL을 최우선 시도, 실패 시 후보 목록 순회
   const candidates = [
@@ -240,7 +363,11 @@ export async function generatePlan({ grade, keyword, apiKey, model, temperature 
   if (!Array.isArray(plan.stages) || plan.stages.length !== 4) {
     throw new Error("AI가 4단계 형식을 지키지 않았습니다. 다시 시도해 주세요.");
   }
-  return { ...plan, gradeLabel, gradeBand: band, keyword: kw };
+  return {
+    ...plan, gradeLabel, gradeBand: band, keyword: kw,
+    school: sch, subjects: subjects?.length ? subjects : undefined,
+    standardsPool: standards.length,
+  };
 }
 
 /**
@@ -254,11 +381,11 @@ export async function generatePlan({ grade, keyword, apiKey, model, temperature 
  *     이때는 fallback 표시를 함께 돌려주어 화면에 솔직히 안내합니다.
  */
 export async function generatePlanCached({
-  grade, keyword, apiKey, model, blobToken,
+  grade, keyword, apiKey, model, blobToken, school, subjects = [],
 }) {
-  const { grade: g, band } = parseGradeBand(grade);
+  const { grade: g, band, school: sch } = parseGradeBand(grade, school);
   const kw = String(keyword ?? "").trim() || "기후 위기";
-  const base = baseKey({ band, grade: g, keyword: kw });
+  const base = baseKey({ band, grade: g, keyword: kw, school: sch, subjects });
 
   let queueInfo = null;
 
@@ -271,6 +398,8 @@ export async function generatePlanCached({
           keyword: kw,
           apiKey,
           model,
+          school: sch,
+          subjects,
           // 매번 다른 결과가 나오도록 다양성을 높게 유지
           temperature: 1.0,
         }),

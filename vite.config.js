@@ -42,11 +42,12 @@ export default defineConfig(({ mode }) => {
               return res.end(JSON.stringify({ error: "POST only" }));
             }
             try {
-              const { grade, keyword, fresh } = await readJson(req);
+              const { grade, keyword, school, subjects } = await readJson(req);
               const plan = await generatePlanCached({
                 grade,
                 keyword,
-                fresh: fresh === true,
+                school,
+                subjects: Array.isArray(subjects) ? subjects : [],
                 apiKey: env.GEMINI_API_KEY,
                 model: env.GEMINI_MODEL,
                 blobToken: env.BLOB_READ_WRITE_TOKEN,
@@ -54,6 +55,20 @@ export default defineConfig(({ mode }) => {
               res.end(JSON.stringify(plan));
             } catch (e) {
               res.statusCode = e.status === 429 ? 429 : 500;
+              res.end(JSON.stringify({ error: e.message }));
+            }
+          });
+
+          // 학교급별 과목 목록
+          server.middlewares.use("/api/subjects", async (req, res) => {
+            res.setHeader("Content-Type", "application/json; charset=utf-8");
+            try {
+              const { subjectsOf, SCHOOLS } = await import("./api/_lib.mjs");
+              res.end(JSON.stringify(
+                Object.fromEntries(SCHOOLS.map((s) => [s, subjectsOf(s)]))
+              ));
+            } catch (e) {
+              res.statusCode = 500;
               res.end(JSON.stringify({ error: e.message }));
             }
           });

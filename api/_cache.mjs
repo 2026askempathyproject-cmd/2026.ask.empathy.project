@@ -33,8 +33,11 @@ function hash(str) {
 }
 
 /** 학년·소재 조합의 기본 키 (변형 번호 제외) */
-export function baseKey({ band, keyword, grade }) {
-  return `plan-cache/${band.replace(/[^0-9~]/g, "")}-${grade}-${hash(normalizeKeyword(keyword))}`;
+export function baseKey({ band, keyword, grade, school = "", subjects = [] }) {
+  const sch = { 초등학교: "e", 중학교: "m", 고등학교: "h" }[school] || "e";
+  const subj = [...subjects].sort().join(",");
+  const sig = hash(normalizeKeyword(keyword) + "|" + subj);
+  return `plan-cache/${sch}${grade}-${band.replace(/[^0-9~]/g, "")}-${sig}`;
 }
 
 const slotPath = (base, n) => `${base}-v${n}.json`;

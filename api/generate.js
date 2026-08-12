@@ -17,6 +17,8 @@ export default async function handler(req, res) {
     const plan = await generatePlanCached({
       grade: body.grade,
       keyword: body.keyword,
+      school: body.school,
+      subjects: Array.isArray(body.subjects) ? body.subjects : [],
       fresh: body.fresh === true,
       apiKey: process.env.GEMINI_API_KEY,
       model: process.env.GEMINI_MODEL,
