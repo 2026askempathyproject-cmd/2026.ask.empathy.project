@@ -42,10 +42,11 @@ export default defineConfig(({ mode }) => {
               return res.end(JSON.stringify({ error: "POST only" }));
             }
             try {
-              const { grade, keyword } = await readJson(req);
+              const { grade, keyword, fresh } = await readJson(req);
               const plan = await generatePlanCached({
                 grade,
                 keyword,
+                fresh: fresh === true,
                 apiKey: env.GEMINI_API_KEY,
                 model: env.GEMINI_MODEL,
                 blobToken: env.BLOB_READ_WRITE_TOKEN,

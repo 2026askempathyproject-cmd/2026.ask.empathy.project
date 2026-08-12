@@ -1,16 +1,20 @@
 /**
  * 지도안 캐시 (서버 전용)
  *
- * 같은 학년·소재로 만든 지도안은 이미 만들어 둔 것을 그대로 돌려줍니다.
- * 연수나 발표처럼 여러 사람이 같은 주제를 동시에 넣는 상황에서
- * 외부 API 호출을 사실상 1회로 줄여 한도 초과(429)를 막습니다.
+ * 설계 의도
+ *  - AI 기획자는 브레인스토밍 도구이므로 "늘 같은 답"이 나오면 안 됩니다.
+ *  - 그렇다고 매번 새로 만들면 무료 API 한도(분당 요청 수)에 걸립니다.
  *
- * 저장소는 이미 쓰고 있는 Vercel Blob을 재사용합니다.
+ * 그래서 학년·소재 조합마다 변형안을 최대 3개까지 쌓아 두고,
+ * 요청이 오면 그중 하나를 무작위로 돌려줍니다.
+ *  - 같은 주제라도 볼 때마다 다른 안이 나옵니다.
+ *  - '다른 안으로 다시 만들기'를 누르면 새 변형안을 추가로 생성합니다.
+ *  - 변형안이 3개 다 차면 가장 오래된 것을 새 것으로 교체합니다.
  */
 import { put, head } from "@vercel/blob";
 
-/** 캐시 유효 기간 — 교육과정이 바뀌지 않는 한 오래 두어도 됩니다 */
 const MAX_AGE_DAYS = 180;
+export const MAX_VARIANTS = 3;
 
 /** 표기 차이를 흡수해 캐시 적중률을 높이는 정규화 */
 export function normalizeKeyword(s) {
@@ -28,50 +32,81 @@ function hash(str) {
   return h.toString(36);
 }
 
-export function cacheKey({ band, keyword, grade }) {
-  const k = normalizeKeyword(keyword);
-  return `plan-cache/${band.replace(/[^0-9~]/g, "")}-${grade}-${hash(k)}.json`;
+/** 학년·소재 조합의 기본 키 (변형 번호 제외) */
+export function baseKey({ band, keyword, grade }) {
+  return `plan-cache/${band.replace(/[^0-9~]/g, "")}-${grade}-${hash(normalizeKeyword(keyword))}`;
 }
 
-/** 캐시 조회 — 없거나 오래됐으면 null */
-export async function readCache(key, token) {
+const slotPath = (base, n) => `${base}-v${n}.json`;
+
+/** 존재하는 변형안들의 메타 정보 조회 */
+async function listVariants(base, token) {
+  const checks = Array.from({ length: MAX_VARIANTS }, (_, i) =>
+    head(slotPath(base, i + 1), { token })
+      .then((m) => ({ slot: i + 1, url: m.url, at: new Date(m.uploadedAt).getTime() }))
+      .catch(() => null)
+  );
+  const found = (await Promise.all(checks)).filter(Boolean);
+  const fresh = found.filter((v) => (Date.now() - v.at) / 86400000 <= MAX_AGE_DAYS);
+  return fresh;
+}
+
+/** 저장된 변형안 중 하나를 무작위로 반환 (없으면 null) */
+export async function readRandomVariant(base, token) {
   if (!token) return null;
   try {
-    const meta = await head(key, { token });
-    if (!meta?.url) return null;
-
-    const age = (Date.now() - new Date(meta.uploadedAt).getTime()) / 86400000;
-    if (age > MAX_AGE_DAYS) return null;
-
-    const r = await fetch(meta.url, { cache: "no-store" });
+    const variants = await listVariants(base, token);
+    if (!variants.length) return null;
+    const pick = variants[Math.floor(Math.random() * variants.length)];
+    const r = await fetch(pick.url, { cache: "no-store" });
     if (!r.ok) return null;
-    return await r.json();
+    const data = await r.json();
+    return { data, variantCount: variants.length };
   } catch {
-    return null; // 미존재 등 모든 실패는 캐시 미적중으로 처리
+    return null;
   }
 }
 
-/** 캐시 저장 — 실패해도 본 기능에는 영향 없음 */
-export async function writeCache(key, data, token) {
+/**
+ * 새 변형안 저장
+ * 빈 슬롯이 있으면 거기에, 없으면 가장 오래된 슬롯을 교체합니다.
+ */
+export async function writeVariant(base, data, token) {
   if (!token) return;
   try {
-    await put(key, JSON.stringify(data), {
+    const variants = await listVariants(base, token);
+    const used = new Set(variants.map((v) => v.slot));
+    let slot = null;
+    for (let i = 1; i <= MAX_VARIANTS; i++) {
+      if (!used.has(i)) { slot = i; break; }
+    }
+    if (slot === null) {
+      slot = variants.sort((a, b) => a.at - b.at)[0].slot; // 가장 오래된 것 교체
+    }
+    await put(slotPath(base, slot), JSON.stringify(data), {
       access: "public",
       token,
       addRandomSuffix: false,
       allowOverwrite: true,
       contentType: "application/json; charset=utf-8",
-      cacheControlMaxAge: 60 * 60 * 24 * 30,
+      cacheControlMaxAge: 60,
     });
   } catch {
-    /* 저장 실패는 무시 */
+    /* 저장 실패는 본 기능에 영향 없음 */
   }
 }
 
-/**
- * 같은 요청이 동시에 여러 번 들어오면 한 번만 실제로 처리하고
- * 나머지는 그 결과를 함께 받습니다. (같은 인스턴스 내)
- */
+/** 변형안이 몇 개나 쌓여 있는지 */
+export async function countVariants(base, token) {
+  if (!token) return 0;
+  try {
+    return (await listVariants(base, token)).length;
+  } catch {
+    return 0;
+  }
+}
+
+/** 동시에 들어온 같은 요청은 한 번만 실제로 처리 */
 const inFlight = new Map();
 
 export function dedupe(key, fn) {

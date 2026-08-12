@@ -7,7 +7,9 @@
  * API 키는 이 모듈을 호출하는 서버 코드에서만 전달되며 브라우저로 나가지 않는다.
  */
 import { readFileSync } from "node:fs";
-import { cacheKey, readCache, writeCache, dedupe } from "./_cache.mjs";
+import {
+  baseKey, readRandomVariant, writeVariant, countVariants, dedupe, MAX_VARIANTS,
+} from "./_cache.mjs";
 
 const STANDARDS = JSON.parse(
   readFileSync(new URL("./standards.json", import.meta.url), "utf-8")
@@ -119,7 +121,7 @@ const MODEL_CANDIDATES = [
   "gemini-3.5-flash",
 ];
 
-async function callGemini({ model, prompt, apiKey }) {
+async function callGemini({ model, prompt, apiKey, temperature = 0.7 }) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
   try {
     return await fetch(url, {
@@ -128,7 +130,8 @@ async function callGemini({ model, prompt, apiKey }) {
       body: JSON.stringify({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         generationConfig: {
-          temperature: 0.7,
+          temperature,
+          topP: 0.95,
           responseMimeType: "application/json",
         },
       }),
@@ -170,7 +173,7 @@ async function discoverFlashModel(apiKey) {
 /**
  * Gemini 호출 → 공감문해 4단계 프로젝트 설계안(JSON) 반환
  */
-export async function generatePlan({ grade, keyword, apiKey, model }) {
+export async function generatePlan({ grade, keyword, apiKey, model, temperature }) {
   if (!apiKey) {
     throw new Error(
       "GEMINI_API_KEY가 설정되지 않았습니다. 프로젝트 루트에 .env 파일을 만들고 키를 입력해 주세요. (.env.example 참고)"
@@ -191,7 +194,7 @@ export async function generatePlan({ grade, keyword, apiKey, model }) {
   let resp = null;
   let lastDetail = "";
   for (const mdl of candidates) {
-    resp = await callGemini({ model: mdl, prompt, apiKey });
+    resp = await callGemini({ model: mdl, prompt, apiKey, temperature });
     if (resp.ok) break;
     lastDetail = await resp.text().catch(() => "");
     const modelGone =
@@ -239,27 +242,46 @@ export async function generatePlan({ grade, keyword, apiKey, model }) {
 }
 
 /**
- * 캐시를 거치는 지도안 생성 (실제 엔드포인트에서 사용)
+ * 지도안 생성 (실제 엔드포인트에서 사용)
  *
- * 1) 같은 학년·소재로 만든 결과가 있으면 즉시 반환 (API 호출 없음)
- * 2) 동시에 같은 요청이 들어오면 한 번만 실제로 생성
- * 3) 생성 결과는 다음 사람을 위해 저장
+ * 기본 동작
+ *  - 학년·소재 조합마다 변형안을 최대 3개까지 쌓아 두고 그중 하나를 무작위로 반환
+ *    → 같은 주제라도 볼 때마다 다른 설계안이 나옵니다.
+ *  - 저장된 변형안이 없으면 새로 생성
+ *  - 동시에 같은 요청이 들어오면 한 번만 실제로 생성
+ *
+ * fresh=true (다른 안으로 다시 만들기)
+ *  - 저장된 것을 무시하고 새로 생성한 뒤 변형안으로 추가
  */
-export async function generatePlanCached({ grade, keyword, apiKey, model, blobToken }) {
+export async function generatePlanCached({
+  grade, keyword, apiKey, model, blobToken, fresh = false,
+}) {
   const { grade: g, band } = parseGradeBand(grade);
   const kw = String(keyword ?? "").trim() || "기후 위기";
-  const key = cacheKey({ band, grade: g, keyword: kw });
+  const base = baseKey({ band, grade: g, keyword: kw });
 
-  const hit = await readCache(key, blobToken);
-  if (hit) return { ...hit, cached: true };
+  if (!fresh) {
+    const hit = await readRandomVariant(base, blobToken);
+    if (hit) {
+      return { ...hit.data, cached: true, variantCount: hit.variantCount };
+    }
+  }
 
-  return dedupe(key, async () => {
-    // 대기 중 다른 요청이 이미 저장했을 수 있으므로 한 번 더 확인
-    const again = await readCache(key, blobToken);
-    if (again) return { ...again, cached: true };
+  // fresh 요청은 각자 새로 만들어야 하므로 병합 키를 분리
+  const lockKey = fresh ? `${base}:fresh:${Date.now()}` : base;
 
-    const plan = await generatePlan({ grade, keyword: kw, apiKey, model });
-    await writeCache(key, plan, blobToken);
-    return { ...plan, cached: false };
+  return dedupe(lockKey, async () => {
+    if (!fresh) {
+      const again = await readRandomVariant(base, blobToken);
+      if (again) return { ...again.data, cached: true, variantCount: again.variantCount };
+    }
+    // 다시 만들 때는 앞선 안과 겹치지 않도록 다양성을 높임
+    const plan = await generatePlan({
+      grade, keyword: kw, apiKey, model,
+      temperature: fresh ? 1.0 : 0.7,
+    });
+    await writeVariant(base, plan, blobToken);
+    const n = await countVariants(base, blobToken);
+    return { ...plan, cached: false, variantCount: n, maxVariants: MAX_VARIANTS };
   });
 }

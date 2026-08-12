@@ -17,12 +17,13 @@ export default async function handler(req, res) {
     const plan = await generatePlanCached({
       grade: body.grade,
       keyword: body.keyword,
+      fresh: body.fresh === true,
       apiKey: process.env.GEMINI_API_KEY,
       model: process.env.GEMINI_MODEL,
       blobToken: process.env.BLOB_READ_WRITE_TOKEN,
     });
-    // 같은 결과를 CDN에서도 잠시 재사용
-    res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=86400");
+    // 매번 다른 변형안을 돌려주므로 CDN 캐시는 사용하지 않음
+    res.setHeader("Cache-Control", "no-store");
     return res.status(200).json(plan);
   } catch (e) {
     return res.status(e.status === 429 ? 429 : 500).json({ error: e.message });

@@ -141,14 +141,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * 요청이 몰려 한도(429)에 걸리면 잠시 기다렸다가 자동으로 다시 시도합니다.
  * @param {(msg:string)=>void} onRetry 재시도 안내 콜백
  */
-async function generateProjectPlan({ grade, keyword }, onRetry) {
+async function generateProjectPlan({ grade, keyword, fresh = false }, onRetry) {
   const waits = [8000, 16000]; // 최대 2회 자동 재시도
 
   for (let attempt = 0; ; attempt++) {
     const res = await fetch("/api/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ grade, keyword }),
+      body: JSON.stringify({ grade, keyword, fresh }),
     });
     const data = await res.json().catch(() => ({}));
 
@@ -1046,14 +1046,14 @@ export default function App() {
 
   const [genNotice, setGenNotice] = useState(null); // 재시도 안내
 
-  const runGenerator = useCallback(async () => {
+  const runGenerator = useCallback(async (fresh = false) => {
     setGenLoading(true);
-    setGenResult(null);
+    if (!fresh) setGenResult(null);
     setGenError(null);
-    setGenNotice(null);
+    setGenNotice(fresh ? "새로운 관점으로 다시 설계하고 있어요…" : null);
     try {
       const plan = await generateProjectPlan(
-        { grade: `초등 ${genGrade}학년`, keyword: genKeyword },
+        { grade: `초등 ${genGrade}학년`, keyword: genKeyword, fresh },
         (msg) => setGenNotice(msg)
       );
       setGenResult(plan);
@@ -2508,14 +2508,14 @@ export default function App() {
                       placeholder="예: 기후 위기"
                       value={genKeyword}
                       onChange={(e) => setGenKeyword(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter" && !genLoading) runGenerator(); }}
+                      onKeyDown={(e) => { if (e.key === "Enter" && !genLoading) runGenerator(false); }}
                     />
                   </div>
                 </div>
               </div>
 
               <button
-                onClick={runGenerator}
+                onClick={() => runGenerator(false)}
                 disabled={genLoading}
                 className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-extrabold text-white text-base transition-transform hover:scale-[1.02] disabled:opacity-80"
                 style={{ background: `linear-gradient(90deg,${C.blue},${C.coral})`, boxShadow: "0 10px 28px rgba(244,63,94,0.3)" }}
@@ -2574,6 +2574,12 @@ export default function App() {
                     </div>
                     <h4 className="text-lg md:text-xl font-black mb-2">{genResult.projectTitle}</h4>
                     <p className="text-sm leading-relaxed max-w-xl mx-auto" style={{ color: C.gray }}>{genResult.overview}</p>
+                    {genResult.variantCount > 1 && (
+                      <p className="text-xs mt-3 flex items-center justify-center gap-1.5" style={{ color: C.muted }}>
+                        <Layers size={12} />
+                        이 주제로 {genResult.variantCount}가지 설계안이 쌓여 있습니다 · 다시 만들면 또 다른 안이 나옵니다
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
@@ -2581,7 +2587,16 @@ export default function App() {
                       <Layers size={17} style={{ color: C.blue }} />
                       <h4 className="font-extrabold text-sm md:text-base">공·감·문·해 4단계 설계안</h4>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
+                      <button
+                        onClick={() => runGenerator(true)}
+                        disabled={genLoading}
+                        title="같은 학년·소재로 다른 설계안을 새로 만듭니다"
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-transform hover:scale-105 disabled:opacity-60"
+                        style={{ border: `1.5px solid ${C.coral}55`, background: "#fff", color: C.coral }}
+                      >
+                        <RefreshCw size={14} /> 다른 안으로 다시 만들기
+                      </button>
                       <button
                         onClick={copyPlan}
                         className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-transform hover:scale-105"
