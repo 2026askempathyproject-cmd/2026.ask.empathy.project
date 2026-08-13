@@ -5,6 +5,10 @@ import { buildPlanHtml, planToText, safeFileName } from "./planDocument.js";
 import { buildPlanDocx } from "./planDocx.js";
 import { buildPlanHwpx } from "./planHwpx.js";
 import {
+  getAt, setAt, setAt as _setAt, editCount,
+  loadSaved, savePlan, removeSaved, formatSavedAt,
+} from "./planEditing.js";
+import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc,
 } from "firebase/firestore";
 /** 업로드 가능한 최대 파일 크기 (서버 한도와 동일) */
@@ -721,6 +725,83 @@ const normalizeUrl = (raw) => {
   return `https://${v}`;
 };
 
+/**
+ * 클릭하면 바로 고칠 수 있는 텍스트 (교사 인 더 루프)
+ * 교사가 고친 자리는 밑줄로 표시하고, 되돌리기 버튼을 함께 제공한다.
+ */
+function Editable({
+  value, onChange, onReset, edited, multiline = false,
+  className = "", style = {}, placeholder = "내용을 입력하세요", ariaLabel,
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const ref = useRef(null);
+
+  useEffect(() => { setDraft(value); }, [value]);
+  useEffect(() => {
+    if (editing && ref.current) {
+      ref.current.focus();
+      ref.current.select?.();
+    }
+  }, [editing]);
+
+  const commit = () => {
+    setEditing(false);
+    const v = draft.trim();
+    if (v !== value) onChange(v);
+  };
+
+  if (editing) {
+    const Tag = multiline ? "textarea" : "input";
+    return (
+      <Tag
+        ref={ref}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") { setDraft(value); setEditing(false); }
+          if (e.key === "Enter" && (!multiline || e.ctrlKey || e.metaKey)) { e.preventDefault(); commit(); }
+        }}
+        rows={multiline ? Math.max(2, Math.ceil(draft.length / 46)) : undefined}
+        placeholder={placeholder}
+        aria-label={ariaLabel}
+        className={`${className} w-full rounded-lg px-2 py-1 outline-none resize-none`}
+        style={{ ...style, border: `1.5px solid ${C.blue}`, background: "#fff" }}
+      />
+    );
+  }
+
+  return (
+    <span className="group/edit inline-flex items-start gap-1 max-w-full">
+      <span
+        role="button"
+        tabIndex={0}
+        onClick={() => setEditing(true)}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setEditing(true); } }}
+        title="클릭하면 수정할 수 있습니다"
+        className={`${className} cursor-text rounded px-0.5 -mx-0.5 transition-colors hover:bg-blue-50`}
+        style={{
+          ...style,
+          borderBottom: edited ? `2px solid ${C.emerald}` : "2px dashed transparent",
+        }}
+      >
+        {value || <span style={{ color: "#94A3B8" }}>{placeholder}</span>}
+      </span>
+      {edited && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onReset(); }}
+          title="AI 원안으로 되돌리기"
+          className="shrink-0 opacity-0 group-hover/edit:opacity-100 transition-opacity mt-0.5"
+          style={{ color: C.muted }}
+        >
+          <RefreshCw size={11} />
+        </button>
+      )}
+    </span>
+  );
+}
+
 const IconBtn = ({ onClick, children, color, title }) => (
   <button
     onClick={onClick}
@@ -1008,7 +1089,7 @@ export default function App() {
 
   /** 지도안 기본 파일명 */
   const planFileName = () =>
-    safeFileName(`공감문해_지도안_${genResult.gradeLabel}_${genResult.keyword}`);
+    safeFileName(`공감문해_지도안_${planDraft.gradeLabel}_${planDraft.keyword}`);
 
   /** 파일 내려받기 공통 */
   const saveBlob = (blob, filename) => {
@@ -1024,7 +1105,7 @@ export default function App() {
   /** 1) 텍스트 복사 */
   const copyPlan = async () => {
     try {
-      await navigator.clipboard.writeText(planToText(genResult));
+      await navigator.clipboard.writeText(planToText(planDraft));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -1039,8 +1120,8 @@ export default function App() {
     try {
       const blob =
         kind === "hwpx"
-          ? await buildPlanHwpx(genResult)
-          : await buildPlanDocx(genResult);
+          ? await buildPlanHwpx(planDraft)
+          : await buildPlanDocx(planDraft);
       saveBlob(blob, `${planFileName()}.${kind}`);
       setExportOpen(false);
     } catch (e) {
@@ -1058,7 +1139,7 @@ export default function App() {
       return;
     }
     w.document.open();
-    w.document.write(buildPlanHtml(genResult, { forPrint: true }));
+    w.document.write(buildPlanHtml(planDraft, { forPrint: true }));
     w.document.close();
     setExportOpen(false);
   };
@@ -1066,13 +1147,73 @@ export default function App() {
   /** 4) 텍스트 파일로 저장 */
   const downloadTxt = () => {
     saveBlob(
-      new Blob(["﻿" + planToText(genResult)], { type: "text/plain;charset=utf-8" }),
+      new Blob(["﻿" + planToText(planDraft)], { type: "text/plain;charset=utf-8" }),
       `${planFileName()}.txt`
     );
     setExportOpen(false);
   };
 
   const [genNotice, setGenNotice] = useState(null); // 대기·재시도 안내
+
+  /* ---------- 교사 인 더 루프: 지도안 편집 ---------- */
+  const [planDraft, setPlanDraft] = useState(null); // 교사가 고친 지도안
+  const [edits, setEdits] = useState({});           // 고친 위치 → AI 원문
+  const [savedPlans, setSavedPlans] = useState([]);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
+
+  useEffect(() => { setSavedPlans(loadSaved()); }, []);
+
+  /* 새로 생성되면 편집 상태 초기화 */
+  useEffect(() => {
+    setPlanDraft(genResult ? JSON.parse(JSON.stringify(genResult)) : null);
+    setEdits({});
+  }, [genResult]);
+
+  /** 한 항목 수정 */
+  const editField = (path, value) => {
+    setPlanDraft((prev) => setAt(prev, path, value));
+    setEdits((prev) =>
+      path in prev ? prev : { ...prev, [path]: getAt(genResult, path) }
+    );
+  };
+
+  /** 한 항목을 AI 원안으로 되돌리기 */
+  const resetField = (path) => {
+    setPlanDraft((prev) => setAt(prev, path, getAt(genResult, path)));
+    setEdits((prev) => {
+      const n = { ...prev };
+      delete n[path];
+      return n;
+    });
+  };
+
+  /** 전체 되돌리기 */
+  const resetAll = () => {
+    setPlanDraft(JSON.parse(JSON.stringify(genResult)));
+    setEdits({});
+  };
+
+  /** 보관함에 저장 */
+  const savePlanToLibrary = () => {
+    const item = savePlan(planDraft, edits);
+    if (item) {
+      setSavedPlans(loadSaved());
+      setSavedFlash(true);
+      setTimeout(() => setSavedFlash(false), 2200);
+    } else {
+      alert("저장에 실패했습니다. 브라우저의 저장 공간을 확인해 주세요.");
+    }
+  };
+
+  /** 보관함에서 불러오기 */
+  const openSaved = (item) => {
+    setGenResult(item.plan);          // 기준선도 저장본으로 (되돌리기 기준)
+    setPlanDraft(JSON.parse(JSON.stringify(item.plan)));
+    setEdits(item.edits || {});
+    setLibraryOpen(false);
+    document.getElementById("generator")?.scrollIntoView({ behavior: "smooth" });
+  };
 
   /* 오래 걸리면 무슨 일이 일어나는지 단계적으로 알려 줌 (침묵 방지) */
   useEffect(() => {
@@ -2681,9 +2822,20 @@ export default function App() {
                   </>
                 )}
               </button>
-              <p className="mt-2 text-center text-xs" style={{ color: C.gray }}>
-                {genSchool} 2022 개정 교육과정 성취기준을 근거로 생성합니다 (약 5~15초 소요)
-              </p>
+              <div className="mt-2 flex items-center justify-center gap-3 flex-wrap">
+                <p className="text-center text-xs" style={{ color: C.gray }}>
+                  {genSchool} 2022 개정 교육과정 성취기준을 근거로 생성합니다 (약 5~15초 소요)
+                </p>
+                {savedPlans.length > 0 && (
+                  <button
+                    onClick={() => setLibraryOpen(true)}
+                    className="flex items-center gap-1.5 text-xs font-bold"
+                    style={{ color: C.blue }}
+                  >
+                    <BookOpen size={13} /> 내 지도안 {savedPlans.length}개
+                  </button>
+                )}
+              </div>
 
               {/* 로딩 애니메이션 */}
               {genLoading && (
@@ -2711,26 +2863,46 @@ export default function App() {
               )}
 
               {/* 생성 결과 */}
-              {genResult && !genLoading && (
+              {planDraft && !genLoading && (
                 <div className="mt-8">
                   {/* 프로젝트 개요 */}
                   <div className="rounded-2xl p-6 mb-6 text-center" style={{ background: `linear-gradient(135deg,${C.blue}0D,${C.coral}0D)`, border: "1px solid #E2E8F0" }}>
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <span className="px-2.5 py-1 rounded-full text-xs font-bold" style={{ background: `${C.blue}14`, color: C.blue }}>
-                        {genResult.gradeLabel}
+                        {planDraft.gradeLabel}
                       </span>
                       <span className="px-2.5 py-1 rounded-full text-xs font-bold" style={{ background: `${C.coral}14`, color: C.coral }}>
-                        {genResult.keyword}
+                        {planDraft.keyword}
                       </span>
-                      {genResult.subjects?.length > 0 && (
+                      {planDraft.subjects?.length > 0 && (
                         <span className="px-2.5 py-1 rounded-full text-xs font-bold" style={{ background: `${C.emerald}14`, color: C.emerald }}>
-                          {genResult.subjects.join(" · ")}
+                          {planDraft.subjects.join(" · ")}
                         </span>
                       )}
                     </div>
-                    <h4 className="text-lg md:text-xl font-black mb-2">{genResult.projectTitle}</h4>
-                    <p className="text-sm leading-relaxed max-w-xl mx-auto" style={{ color: C.gray }}>{genResult.overview}</p>
-                    {genResult.fallback && (
+                    <h4 className="text-lg md:text-xl font-black mb-2">
+                      <Editable
+                        value={planDraft.projectTitle}
+                        onChange={(v) => editField("projectTitle", v)}
+                        onReset={() => resetField("projectTitle")}
+                        edited={"projectTitle" in edits}
+                        ariaLabel="프로젝트 제목"
+                        placeholder="프로젝트 제목"
+                      />
+                    </h4>
+                    <div className="text-sm leading-relaxed max-w-xl mx-auto" style={{ color: C.gray }}>
+                      <Editable
+                        value={planDraft.overview}
+                        onChange={(v) => editField("overview", v)}
+                        onReset={() => resetField("overview")}
+                        edited={"overview" in edits}
+                        multiline
+                        ariaLabel="프로젝트 개요"
+                        placeholder="프로젝트 개요"
+                        style={{ color: C.gray }}
+                      />
+                    </div>
+                    {planDraft.fallback && (
                       <p className="text-xs mt-3 flex items-center justify-center gap-1.5 leading-relaxed" style={{ color: C.coral }}>
                         <AlertTriangle size={12} />
                         지금 요청이 몰려 새로 만들지 못하고, 이전에 만들어 둔 설계안을 보여드립니다
@@ -2738,10 +2910,42 @@ export default function App() {
                     )}
                   </div>
 
+                  {/* 교사 인 더 루프 안내 */}
+                  <div
+                    className="rounded-2xl px-4 py-3 mb-5 flex items-start gap-2.5"
+                    style={{ background: `${C.emerald}0C`, border: `1px solid ${C.emerald}33` }}
+                  >
+                    <Pencil size={15} className="mt-0.5 shrink-0" style={{ color: C.emerald }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold" style={{ color: C.emerald }}>
+                        AI가 만든 초안입니다 — 밑줄 친 곳을 눌러 선생님 수업에 맞게 고치세요
+                      </p>
+                      <p className="text-xs mt-0.5" style={{ color: C.gray }}>
+                        {editCount(edits) > 0
+                          ? `${editCount(edits)}곳을 수정하셨습니다. 수정한 자리는 초록 밑줄로 표시됩니다.`
+                          : "제목, 개요, 활동, 평가 등 모든 항목을 직접 수정할 수 있습니다."}
+                      </p>
+                    </div>
+                    {editCount(edits) > 0 && (
+                      <button
+                        onClick={resetAll}
+                        className="shrink-0 text-xs font-bold px-2.5 py-1 rounded-lg"
+                        style={{ color: C.gray, border: "1px solid #E2E8F0", background: "#fff" }}
+                      >
+                        전체 되돌리기
+                      </button>
+                    )}
+                  </div>
+
                   <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
                     <div className="flex items-center gap-2">
                       <Layers size={17} style={{ color: C.blue }} />
                       <h4 className="font-extrabold text-sm md:text-base">공·감·문·해 4단계 설계안</h4>
+                      {editCount(edits) > 0 && (
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: `${C.emerald}14`, color: C.emerald }}>
+                          교사 수정 {editCount(edits)}곳
+                        </span>
+                      )}
                     </div>
                     <div className="flex gap-2 flex-wrap">
                       <button
@@ -2761,6 +2965,18 @@ export default function App() {
                         {copied ? <><Check size={14} /> 복사됨</> : <><FileText size={14} /> 텍스트 복사</>}
                       </button>
                       <button
+                        onClick={savePlanToLibrary}
+                        title="이 지도안을 이 브라우저에 보관합니다"
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-transform hover:scale-105"
+                        style={{
+                          border: `1.5px solid ${savedFlash ? C.emerald : "#E2E8F0"}`,
+                          background: "#fff",
+                          color: savedFlash ? C.emerald : C.gray,
+                        }}
+                      >
+                        {savedFlash ? <><Check size={14} /> 보관함에 저장됨</> : <><BookOpen size={14} /> 내 지도안으로 저장</>}
+                      </button>
+                      <button
                         onClick={() => setExportOpen(true)}
                         className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white transition-transform hover:scale-105"
                         style={{ background: C.blue, boxShadow: "0 4px 12px rgba(37,99,235,0.3)" }}
@@ -2771,7 +2987,7 @@ export default function App() {
                   </div>
 
                   <div className="flex flex-col gap-4">
-                    {genResult.stages.map((s, i) => {
+                    {planDraft.stages.map((s, i) => {
                       const meta = STAGE_META[i] || STAGE_META[0];
                       const StageIcon = meta.icon;
                       return (
@@ -2788,16 +3004,42 @@ export default function App() {
                                 <p className="text-xs font-bold mb-0.5" style={{ color: meta.color }}>
                                   STEP {i + 1} · {s.stage}{s.label}
                                 </p>
-                                <h5 className="font-extrabold text-sm md:text-base mb-1">{s.title}</h5>
-                                <p className="text-sm flex items-start gap-1.5 mb-2" style={{ color: C.gray }}>
-                                  <Target size={14} className="mt-0.5 shrink-0" style={{ color: meta.color }} />
-                                  {s.goal}
-                                </p>
+                                <h5 className="font-extrabold text-sm md:text-base mb-1">
+                                  <Editable
+                                    value={s.title}
+                                    onChange={(v) => editField(`stages.${i}.title`, v)}
+                                    onReset={() => resetField(`stages.${i}.title`)}
+                                    edited={`stages.${i}.title` in edits}
+                                    ariaLabel={`${s.stage}단계 제목`}
+                                    placeholder="단계 제목"
+                                  />
+                                </h5>
+                                <div className="text-sm flex items-start gap-1.5 mb-2" style={{ color: C.gray }}>
+                                  <Target size={14} className="mt-1 shrink-0" style={{ color: meta.color }} />
+                                  <Editable
+                                    value={s.goal}
+                                    onChange={(v) => editField(`stages.${i}.goal`, v)}
+                                    onReset={() => resetField(`stages.${i}.goal`)}
+                                    edited={`stages.${i}.goal` in edits}
+                                    multiline
+                                    ariaLabel={`${s.stage}단계 학습 목표`}
+                                    placeholder="학습 목표"
+                                    style={{ color: C.gray }}
+                                  />
+                                </div>
                                 <ul className="flex flex-col gap-1 mb-3">
                                   {(s.activities || []).map((a, j) => (
                                     <li key={j} className="flex items-start gap-2 text-sm" style={{ color: C.ink }}>
-                                      <Check size={14} className="mt-0.5 shrink-0" style={{ color: meta.color }} />
-                                      {a}
+                                      <Check size={14} className="mt-1 shrink-0" style={{ color: meta.color }} />
+                                      <Editable
+                                        value={a}
+                                        onChange={(v) => editField(`stages.${i}.activities.${j}`, v)}
+                                        onReset={() => resetField(`stages.${i}.activities.${j}`)}
+                                        edited={`stages.${i}.activities.${j}` in edits}
+                                        multiline
+                                        ariaLabel={`활동 ${j + 1}`}
+                                        placeholder="활동 내용"
+                                      />
                                     </li>
                                   ))}
                                 </ul>
@@ -2817,17 +3059,38 @@ export default function App() {
                                 <div className="flex flex-wrap gap-1.5">
                                   {s.tools && (
                                     <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: `${meta.color}10`, color: meta.color }}>
-                                      <Bot size={12} /> {s.tools}
+                                      <Bot size={12} /> <Editable
+                                        value={s.tools}
+                                        onChange={(v) => editField(`stages.${i}.tools`, v)}
+                                        onReset={() => resetField(`stages.${i}.tools`)}
+                                        edited={`stages.${i}.tools` in edits}
+                                        ariaLabel="추천 에듀테크"
+                                        placeholder="추천 에듀테크"
+                                      />
                                     </span>
                                   )}
                                   {s.assessment && (
                                     <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#F1F5F9", color: C.gray }}>
-                                      <ClipboardCheck size={12} /> {s.assessment}
+                                      <ClipboardCheck size={12} /> <Editable
+                                        value={s.assessment}
+                                        onChange={(v) => editField(`stages.${i}.assessment`, v)}
+                                        onReset={() => resetField(`stages.${i}.assessment`)}
+                                        edited={`stages.${i}.assessment` in edits}
+                                        ariaLabel="과정중심평가"
+                                        placeholder="과정중심평가"
+                                      />
                                     </span>
                                   )}
                                   {s.ask && (
                                     <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: `${C.ink}0A`, color: C.ink }}>
-                                      <Sparkles size={12} /> {s.ask}
+                                      <Sparkles size={12} /> <Editable
+                                        value={s.ask}
+                                        onChange={(v) => editField(`stages.${i}.ask`, v)}
+                                        onReset={() => resetField(`stages.${i}.ask`)}
+                                        edited={`stages.${i}.ask` in edits}
+                                        ariaLabel="ASK 역량"
+                                        placeholder="ASK 역량"
+                                      />
                                     </span>
                                   )}
                                 </div>
@@ -2861,8 +3124,73 @@ export default function App() {
         </div>
       )}
 
+      {/* ================= 내 지도안 보관함 ================= */}
+      {libraryOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4 no-print"
+          style={{ background: "rgba(15,23,42,0.5)", backdropFilter: "blur(6px)" }}
+          onClick={() => setLibraryOpen(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-3xl p-7 max-h-[80vh] overflow-y-auto"
+            style={{ background: "#fff", boxShadow: "0 24px 60px rgba(15,23,42,0.3)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between mb-1">
+              <h4 className="font-extrabold flex items-center gap-2">
+                <BookOpen size={18} style={{ color: C.blue }} /> 내 지도안
+              </h4>
+              <button onClick={() => setLibraryOpen(false)}>
+                <X size={18} style={{ color: C.gray }} />
+              </button>
+            </div>
+            <p className="text-xs mb-5" style={{ color: C.gray }}>
+              이 브라우저에만 저장됩니다. 다른 기기에서는 보이지 않습니다.
+            </p>
+
+            {savedPlans.length === 0 ? (
+              <p className="text-sm text-center py-8" style={{ color: C.muted }}>저장된 지도안이 없습니다.</p>
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                {savedPlans.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-2xl p-4 flex items-start gap-3"
+                    style={{ border: "1.5px solid #E2E8F0" }}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-extrabold text-sm truncate">{item.plan.projectTitle}</p>
+                      <p className="text-xs mt-0.5" style={{ color: C.gray }}>
+                        {item.plan.gradeLabel} · {item.plan.keyword} · {formatSavedAt(item.savedAt)}
+                      </p>
+                      {item.editCount > 0 && (
+                        <span className="inline-block text-[11px] font-bold mt-1.5 px-2 py-0.5 rounded-full" style={{ background: `${C.emerald}14`, color: C.emerald }}>
+                          교사 수정 {item.editCount}곳
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-1.5 shrink-0">
+                      <IconBtn color={C.blue} title="불러오기" onClick={() => openSaved(item)}>
+                        <ExternalLink size={15} />
+                      </IconBtn>
+                      <IconBtn
+                        color={C.coral}
+                        title="삭제"
+                        onClick={() => setSavedPlans(removeSaved(item.id))}
+                      >
+                        <Trash2 size={15} />
+                      </IconBtn>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ================= 지도안 내보내기 모달 ================= */}
-      {exportOpen && genResult && (
+      {exportOpen && planDraft && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center px-4"
           style={{ background: "rgba(15,23,42,0.5)", backdropFilter: "blur(6px)" }}
@@ -2882,7 +3210,7 @@ export default function App() {
               </button>
             </div>
             <p className="text-xs mb-5" style={{ color: C.gray }}>
-              {genResult.gradeLabel} · {genResult.keyword} · 공·감·문·해 4단계 양식
+              {planDraft.gradeLabel} · {planDraft.keyword} · 공·감·문·해 4단계 양식
             </p>
 
             <div className="flex flex-col gap-2.5">
